@@ -16,27 +16,27 @@ import com.jme3.scene.shape.Box;
  */
 public class Main extends SimpleApplication {
 
-        public static void main(String[] args) {
-                Main app = new Main();
-                app.start();
-        }
+    public static void main(String[] args) {
+        Main app = new Main();
+        app.start();
+    }
 
-        @Override
-        public void simpleInitApp() {
-                WorldManager myWorld = new WorldManager(rootNode, assetManager);
+    @Override
+    public void simpleInitApp() {
+        WorldManager myWorld = new WorldManager(rootNode, assetManager);
 
-                cam.setLocation(new com.jme3.math.Vector3f(-10, 50, -10));
-                cam.lookAt(new com.jme3.math.Vector3f(24, 0, 24), com.jme3.math.Vector3f.UNIT_Y);
-                flyCam.setMoveSpeed(30f);
-        }
+        cam.setLocation(new com.jme3.math.Vector3f(-10, 50, -10));
+        cam.lookAt(new com.jme3.math.Vector3f(24, 0, 24), com.jme3.math.Vector3f.UNIT_Y);
+        flyCam.setMoveSpeed(30f);
+    }
 
-        @Override
-        public void simpleUpdate(float tpf) {
-                //TODO: add update code
-        }
+    @Override
+    public void simpleUpdate(float tpf) {
+        //TODO: add update code
+    }
 
-        @Override
-        public void simpleRender(RenderManager rm) {
-                //TODO: add render code
-        }
+    @Override
+    public void simpleRender(RenderManager rm) {
+        //TODO: add render code
+    }
 }

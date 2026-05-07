@@ -23,25 +23,10 @@ public class Main extends SimpleApplication {
 
         @Override
         public void simpleInitApp() {
-                Chunk myFirstChunk = new Chunk();
-                ChunkMesher mesher = new ChunkMesher();
+                WorldManager myWorld = new WorldManager(rootNode, assetManager);
 
-                Mesh chunkMesh = mesher.createMesh(myFirstChunk);
-
-                Geometry chunkGeo = new Geometry("ChunkGeo", chunkMesh);
-                Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-
-                mat.getAdditionalRenderState().setWireframe(true);
-
-                mat.setColor("Color", ColorRGBA.Green);
-                chunkGeo.setMaterial(mat);
-
-                rootNode.attachChild(chunkGeo);
-                // 3. Move the Camera back and up to see the whole chunk
-                cam.setLocation(new com.jme3.math.Vector3f(-10, 20, -10));
-                cam.lookAt(new com.jme3.math.Vector3f(8, 0, 8), com.jme3.math.Vector3f.UNIT_Y);
-
-                // Optional: Speed up the fly camera so you can move around faster
+                cam.setLocation(new com.jme3.math.Vector3f(-10, 50, -10));
+                cam.lookAt(new com.jme3.math.Vector3f(24, 0, 24), com.jme3.math.Vector3f.UNIT_Y);
                 flyCam.setMoveSpeed(30f);
         }
 

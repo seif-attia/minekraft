@@ -1,6 +1,7 @@
 package com.mygame;
 
 import com.jme3.scene.Mesh;
+import com.jme3.scene.Node;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.util.BufferUtils; // CRITICAL: Use the jME one, not LWJGL!
 import java.util.ArrayList;
@@ -17,54 +18,59 @@ public class ChunkMesher {
          * Iterates through chunk data and builds an optimized jME Mesh using
          * Face Culling.
          */
-        public Mesh createMesh(Chunk chunk) {
+        public Mesh createMesh(Chunk chunk, WorldManager world, int chunkX, int chunkZ) {
                 List<Float> positions = new ArrayList<>();
                 List<Integer> indices = new ArrayList<>();
                 int vertexOffset = 0; // Keeps track of the index for triangles
 
-                for (int x = 0; x < Chunk.CHUNK_SIZE; x++) {
+                for (int localX = 0; localX < Chunk.CHUNK_SIZE; localX++) {
                         for (int y = 0; y < Chunk.CHUNK_HEIGHT; y++) {
-                                for (int z = 0; z < Chunk.CHUNK_SIZE; z++) {
+                                for (int localZ = 0; localZ < Chunk.CHUNK_SIZE; localZ++) {
 
-                                        byte blockId = chunk.getBlock(x, y, z);
+                                        byte blockId = chunk.getBlock(localX, y, localZ);
                                         if (blockId == 0) {
-                                                continue; // Skip air entirely
+                                                continue; // Skip air 
                                         }
+
+                                        int globalX = (chunkX * Chunk.CHUNK_SIZE) + localX;
+                                        int globalZ = (chunkZ * Chunk.CHUNK_SIZE) + localZ;
 
                                         // --- FACE CULLING ---
                                         // Top Face Check (+Y)
-                                        if (chunk.getBlock(x, y + 1, z) == 0) {
-                                                addTopFaceVertices(positions, x, y, z);
+                                        // checking blocks at global coords relative to all neighboring chunks
+                                        if (world.getBlockGlobal(globalX, y + 1, globalZ) == 0) {
+                                                // keep draw coords local to the chunk itself
+                                                addTopFaceVertices(positions, localX, y, localZ);
                                                 addIndices(indices, vertexOffset);
                                                 vertexOffset += 4;
                                         }
                                         // Bottom Face Check (-Y)
-                                        if (chunk.getBlock(x, y - 1, z) == 0) {
-                                                addBottomFaceVertices(positions, x, y, z);
+                                        if (world.getBlockGlobal(globalX, y - 1, globalZ) == 0) {
+                                                addBottomFaceVertices(positions, localX, y, localZ);
                                                 addIndices(indices, vertexOffset);
                                                 vertexOffset += 4;
                                         }
                                         // Front Face Check (+Z)
-                                        if (chunk.getBlock(x, y, z + 1) == 0) {
-                                                addFrontFaceVertices(positions, x, y, z);
+                                        if (world.getBlockGlobal(globalX, y, globalZ + 1) == 0) {
+                                                addFrontFaceVertices(positions, localX, y, localZ);
                                                 addIndices(indices, vertexOffset);
                                                 vertexOffset += 4;
                                         }
                                         // Back Face Check (-Z)
-                                        if (chunk.getBlock(x, y, z - 1) == 0) {
-                                                addBackFaceVertices(positions, x, y, z);
+                                        if (world.getBlockGlobal(globalX, y, globalZ - 1) == 0) {
+                                                addBackFaceVertices(positions, localX, y, localZ);
                                                 addIndices(indices, vertexOffset);
                                                 vertexOffset += 4;
                                         }
                                         // Right Face Check (+X)
-                                        if (chunk.getBlock(x + 1, y, z) == 0) {
-                                                addRightFaceVertices(positions, x, y, z);
+                                        if (world.getBlockGlobal(globalX + 1, y, globalZ) == 0) {
+                                                addRightFaceVertices(positions, localX, y, localZ);
                                                 addIndices(indices, vertexOffset);
                                                 vertexOffset += 4;
                                         }
                                         // Left Face Check (-X)
-                                        if (chunk.getBlock(x - 1, y, z) == 0) {
-                                                addLeftFaceVertices(positions, x, y, z);
+                                        if (world.getBlockGlobal(globalX - 1, y, globalZ) == 0) {
+                                                addLeftFaceVertices(positions, localX, y, localZ);
                                                 addIndices(indices, vertexOffset);
                                                 vertexOffset += 4;
                                         }

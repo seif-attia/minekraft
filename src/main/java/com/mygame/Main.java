@@ -21,18 +21,20 @@ public class Main extends SimpleApplication {
         app.start();
     }
 
+    private WorldManager myWorld;
+
     @Override
     public void simpleInitApp() {
-        WorldManager myWorld = new WorldManager(rootNode, assetManager);
+        myWorld = new WorldManager(rootNode, assetManager);
 
         cam.setLocation(new com.jme3.math.Vector3f(-10, 50, -10));
         cam.lookAt(new com.jme3.math.Vector3f(24, 0, 24), com.jme3.math.Vector3f.UNIT_Y);
-        flyCam.setMoveSpeed(30f);
+        flyCam.setMoveSpeed(50f);
     }
 
     @Override
     public void simpleUpdate(float tpf) {
-        //TODO: add update code
+        myWorld.update(cam.getLocation());
     }
 
     @Override

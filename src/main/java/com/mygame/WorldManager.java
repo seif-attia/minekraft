@@ -11,6 +11,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.Set;
+import com.jme3.app.Application;
 
 /**
  * Manages the infinite voxel world using a sliding window algorithm.
@@ -21,15 +26,27 @@ public class WorldManager {
 
     private int renderDistance = 5; // Loads a grid of chunks around the player, so its nxn + 1
 
-    private Map<ChunkPos, Chunk> activeChunks = new HashMap<>();
+    private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
     private Map<ChunkPos, Geometry> activeGeometries = new HashMap<>();
+
+    // MultiThreading Variables
+    private Application app;
+    private ExecutorService executor;
+    // A set to save chunks that are queued for loading to avoid reloading them and to save compute
+    private Set<ChunkPos> loadingChunks = ConcurrentHashMap.newKeySet();
 
     private Node worldNode;
     private ChunkMesher mesher;
     private AssetManager assetManager;
     private Material masterMaterial; // Cached material so we don't reload textures constantly
 
-    public WorldManager(Node rootNode, AssetManager assetManager) {
+    public WorldManager(Application app, Node rootNode, AssetManager assetManager) {
+        this.app = app;
+
+        // Create a thread pool with all available threads in the computer
+        int cores = Runtime.getRuntime().availableProcessors();
+        this.executor = Executors.newFixedThreadPool(Math.max(2, cores - 1));
+
         this.worldNode = new Node("WorldNode");
         rootNode.attachChild(this.worldNode);
 
@@ -57,7 +74,7 @@ public class WorldManager {
             for (int z = -renderDistance; z <= renderDistance; z++) {
                 ChunkPos pos = new ChunkPos(playerChunkX + x, playerChunkZ + z);
 
-                if (!activeChunks.containsKey(pos)) {
+                if (!activeChunks.containsKey(pos) && !loadingChunks.contains(pos)) {
                     loadChunk(pos);
                 }
             }
@@ -80,25 +97,45 @@ public class WorldManager {
     }
 
     private void loadChunk(ChunkPos pos) {
-        //  Create chunk data
-        Chunk newChunk = new Chunk();
+        // Mark as loading immediately on the main thread
+        loadingChunks.add(pos);
 
-        // Add to active map BEFORE meshing, so neighbors can see it
+        // Add chunks immediately to avoid breaking face culling
+        Chunk newChunk = new Chunk();
         activeChunks.put(pos, newChunk);
 
-        //  Build the Mesh
-        Mesh chunkMesh = mesher.createMesh(newChunk, this, pos.x(), pos.z());
+        //  Submit the heavy lifting to a background thread
+        executor.submit(() -> {
 
-        // Create the visual object
-        Geometry chunkGeo = new Geometry("Chunk_" + pos.x() + "_" + pos.z(), chunkMesh);
-        chunkGeo.setMaterial(masterMaterial);
+            // --- BACKGROUND THREAD ---
+            // Creating arrays and calculating Meshes takes a lot of CPU power.
+            Mesh chunkMesh = mesher.createMesh(newChunk, WorldManager.this, pos.x(), pos.z());
 
-        // Position it in the 3D world
-        chunkGeo.setLocalTranslation(pos.x() * Chunk.CHUNK_SIZE, 0, pos.z() * Chunk.CHUNK_SIZE);
+            //  Send the finished Mesh back to the Main Thread safely
+            app.enqueue(() -> {
 
-        // Attach to scene and save reference
-        worldNode.attachChild(chunkGeo);
-        activeGeometries.put(pos, chunkGeo);
+                // Edge case: The player might have run far away while this thread was building.
+                // If they did, we just throw the mesh away.
+                int playerX = (int) Math.floor(app.getCamera().getLocation().x / Chunk.CHUNK_SIZE);
+                int playerZ = (int) Math.floor(app.getCamera().getLocation().z / Chunk.CHUNK_SIZE);
+                if (Math.abs(pos.x() - playerX) > renderDistance || Math.abs(pos.z() - playerZ) > renderDistance) {
+                    loadingChunks.remove(pos);
+                    activeChunks.remove(pos);
+                    return;
+                }
+
+                // Cleanup loading state
+                loadingChunks.remove(pos);
+
+                // Create and attach the Geometry
+                Geometry chunkGeo = new Geometry("Chunk_" + pos.x() + "_" + pos.z(), chunkMesh);
+                chunkGeo.setMaterial(masterMaterial);
+                chunkGeo.setLocalTranslation(pos.x() * Chunk.CHUNK_SIZE, 0, pos.z() * Chunk.CHUNK_SIZE);
+
+                worldNode.attachChild(chunkGeo);
+                activeGeometries.put(pos, chunkGeo);
+            });
+        });
     }
 
     private void unloadChunk(ChunkPos pos) {
@@ -132,5 +169,10 @@ public class WorldManager {
         int localZ = Math.floorMod(globalZ, Chunk.CHUNK_SIZE);
 
         return activeChunks.get(targetChunk).getBlock(localX, globalY, localZ);
+    }
+
+    // Destroys thread workers upon application shutdown
+    public void destroy() {
+        executor.shutdownNow();
     }
 }

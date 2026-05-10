@@ -25,11 +25,11 @@ public class Main extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
-        myWorld = new WorldManager(rootNode, assetManager);
+        myWorld = new WorldManager(this, rootNode, assetManager);
 
         cam.setLocation(new com.jme3.math.Vector3f(-10, 50, -10));
         cam.lookAt(new com.jme3.math.Vector3f(24, 0, 24), com.jme3.math.Vector3f.UNIT_Y);
-        flyCam.setMoveSpeed(50f);
+        flyCam.setMoveSpeed(70f);
     }
 
     @Override
@@ -40,5 +40,13 @@ public class Main extends SimpleApplication {
     @Override
     public void simpleRender(RenderManager rm) {
         //TODO: add render code
+    }
+
+    @Override
+    public void destroy() {
+        if (myWorld != null) {
+            myWorld.destroy();
+        }
+        super.destroy(); // for jME clean-up
     }
 }

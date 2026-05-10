@@ -24,7 +24,7 @@ import com.jme3.app.Application;
  */
 public class WorldManager {
 
-    private int renderDistance = 5; // Loads a grid of chunks around the player, so its nxn + 1
+    private int renderDistance = 3; // Loads a grid of chunks around the player, so its nxn + 1
 
     private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
     private Map<ChunkPos, Geometry> activeGeometries = new HashMap<>();
@@ -134,6 +134,27 @@ public class WorldManager {
 
                 worldNode.attachChild(chunkGeo);
                 activeGeometries.put(pos, chunkGeo);
+
+                // Notifiy neighbors that a new chunk was created to recalculate their meshes and cull hidden faces
+                ChunkPos north = new ChunkPos(pos.x(), pos.z() + 1);
+                if (activeGeometries.containsKey(north)) {
+                    rebuildChunk(north);
+                }
+
+                ChunkPos south = new ChunkPos(pos.x(), pos.z() - 1);
+                if (activeGeometries.containsKey(south)) {
+                    rebuildChunk(south);
+                }
+
+                ChunkPos east = new ChunkPos(pos.x() + 1, pos.z());
+                if (activeGeometries.containsKey(east)) {
+                    rebuildChunk(east);
+                }
+
+                ChunkPos west = new ChunkPos(pos.x() - 1, pos.z());
+                if (activeGeometries.containsKey(west)) {
+                    rebuildChunk(west);
+                }
             });
         });
     }
@@ -169,6 +190,47 @@ public class WorldManager {
         int localZ = Math.floorMod(globalZ, Chunk.CHUNK_SIZE);
 
         return activeChunks.get(targetChunk).getBlock(localX, globalY, localZ);
+    }
+
+    // Chunk neighbor notification system to cull the meshes of the outer chunk borders after generating new chunks
+    private void rebuildChunk(ChunkPos pos) {
+
+        // Check if the chunk is already in queue or not
+        if (loadingChunks.contains(pos)) {
+            return;
+        }
+
+        loadingChunks.add(pos);
+        Chunk existingData = activeChunks.get(pos);
+
+        executor.submit(() -> {
+            // Recalculate the math in the background
+            Mesh updatedMesh = mesher.createMesh(existingData, WorldManager.this, pos.x(), pos.z());
+
+            app.enqueue(() -> {
+                // Remove from loading queue
+                loadingChunks.remove(pos);
+
+                // If the player ran faster before the chunk finishes throw the mesh and load nothing
+                if (!activeChunks.containsKey(pos)) {
+                    return;
+                }
+
+                // Find the OLD geometry and delete it from the screen
+                Geometry oldGeo = activeGeometries.remove(pos);
+                if (oldGeo != null) {
+                    oldGeo.removeFromParent();
+                }
+
+                //  Attach the NEW geometry
+                Geometry newGeo = new Geometry("Chunk_" + pos.x() + "_" + pos.z(), updatedMesh);
+                newGeo.setMaterial(masterMaterial);
+                newGeo.setLocalTranslation(pos.x() * Chunk.CHUNK_SIZE, 0, pos.z() * Chunk.CHUNK_SIZE);
+
+                worldNode.attachChild(newGeo);
+                activeGeometries.put(pos, newGeo);
+            });
+        });
     }
 
     // Destroys thread workers upon application shutdown

@@ -23,20 +23,23 @@ public class Main extends SimpleApplication {
         app.start();
     }
 
+    private MinimapManager minimap;
+  
     @Override
     public void simpleInitApp() {
-        // For now, we jump straight into the GameState. 
-        // Later, you will attach MenuState here instead.
-        
+  
         setDisplayFps(false);
         setDisplayStatView(false);
-        
+        minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
         stateManager.attach(new MenuState());
+
     }
 
     @Override
     public void simpleUpdate(float tpf) {
         // Keep this empty; logic is now in GameState.update()
+        minimap.update(cam.getLocation());
+
     }
 
     @Override

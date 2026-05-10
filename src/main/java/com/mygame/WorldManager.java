@@ -25,7 +25,7 @@ import com.jme3.asset.TextureKey;
  */
 public class WorldManager {
 
-    private int renderDistance = 10; // Loads a grid of chunks around the player, so its nxn + 1
+    private int renderDistance = 3; // Loads a grid of chunks around the player, so its nxn + 1
 
     private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
     private Map<ChunkPos, Geometry> activeGeometries = new HashMap<>();

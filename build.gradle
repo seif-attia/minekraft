@@ -6,6 +6,22 @@ plugins {
 group = 'com.mygame'
 version = '1.0'
 
+import javax.net.ssl.*
+import java.security.cert.X509Certificate
+
+// This bypasses the SSL certificate check for the duration of the build
+def trustAllCerts = [
+    checkClientTrusted: { f, p -> },
+    checkServerTrusted: { f, p -> },
+    getAcceptedIssuers: { -> null }
+] as X509TrustManager
+
+def sc = SSLContext.getInstance("SSL")
+sc.init(null, [trustAllCerts] as TrustManager[], new java.security.SecureRandom())
+SSLContext.setDefault(sc)
+HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory())
+HttpsURLConnection.setDefaultHostnameVerifier({ map, session -> true } as HostnameVerifier)
+
 application {
     applicationName = 'MineKraft'
     mainClass = 'com.mygame.Main'
@@ -16,8 +32,12 @@ application {
 }
 
 repositories {
-    mavenCentral()
-    maven { url = 'https://jitpack.io' }
+    maven {
+        url "https://repo1.maven.org/maven2/"
+    }
+    maven {
+        url "https://jitpack.io"
+    }
 }
 
 project.ext {
@@ -49,6 +69,9 @@ dependencies {
   // Core JME
   implementation "org.jmonkeyengine:jme3-core:$jmeVer"
   implementation "org.jmonkeyengine:jme3-desktop:$jmeVer"
+  implementation "com.simsilica:lemur:1.16.0"
+  implementation "com.simsilica:lemur-proto:1.13.0"
+  implementation "org.apache.groovy:groovy-all:4.0.21"
   // Mac OS with LWJGL 3 doesn't allow AWT/Swing
   if (!System.getProperty("os.name").toLowerCase().contains("mac")) {
     implementation "org.jmonkeyengine:jme3-awt-dialogs:$jmeVer"

@@ -245,6 +245,10 @@ public class WorldManager {
         });
     }
 
+    public Node getWorldNode() {
+        return worldNode;
+    }
+
     // Destroys thread workers upon application shutdown
     public void destroy() {
         executor.shutdownNow();

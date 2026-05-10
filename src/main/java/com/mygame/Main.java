@@ -39,6 +39,7 @@ public class Main extends SimpleApplication {
     }
 
     private WorldManager myWorld;
+    private MinimapManager minimap;
 
     @Override
     public void simpleInitApp() {
@@ -47,11 +48,14 @@ public class Main extends SimpleApplication {
         cam.setLocation(new com.jme3.math.Vector3f(-10, 50, -10));
         cam.lookAt(new com.jme3.math.Vector3f(24, 0, 24), com.jme3.math.Vector3f.UNIT_Y);
         flyCam.setMoveSpeed(70f);
+
+        minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
     }
 
     @Override
     public void simpleUpdate(float tpf) {
         myWorld.update(cam.getLocation());
+        minimap.update(cam.getLocation());
     }
 
     @Override

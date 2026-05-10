@@ -23,14 +23,12 @@ public class Main extends SimpleApplication {
         app.start();
     }
 
-    private MinimapManager minimap;
-  
     @Override
     public void simpleInitApp() {
-  
-        setDisplayFps(false);
-        setDisplayStatView(false);
-        minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
+
+        setDisplayFps(true);
+        setDisplayStatView(true);
+
         stateManager.attach(new MenuState());
 
     }
@@ -38,7 +36,6 @@ public class Main extends SimpleApplication {
     @Override
     public void simpleUpdate(float tpf) {
         // Keep this empty; logic is now in GameState.update()
-        minimap.update(cam.getLocation());
 
     }
 

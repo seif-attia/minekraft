@@ -3,6 +3,7 @@ package com.mygame;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
+import com.jme3.renderer.RenderManager;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
 import com.jme3.scene.Node;
@@ -13,6 +14,8 @@ public class GameState extends BaseAppState {
     private WorldManager myWorld;
     private Camera cam;
     private Node rootNode;
+    private MinimapManager minimap;
+    private RenderManager renderManager;
 
     @Override
     protected void initialize(Application app) {
@@ -20,9 +23,12 @@ public class GameState extends BaseAppState {
         this.app = (SimpleApplication) app;
         this.cam = this.app.getCamera();
         this.rootNode = this.app.getRootNode();
+        this.renderManager = this.app.getRenderManager();
 
         // Initialize the world logic moved from Main.simpleInitApp
         myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
+
+        minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
 
         // Setup camera
         cam.setLocation(new Vector3f(-10, 50, -10));
@@ -35,6 +41,10 @@ public class GameState extends BaseAppState {
         // The game loop logic moved from Main.simpleUpdate
         if (myWorld != null) {
             myWorld.update(cam.getLocation());
+        }
+
+        if (minimap != null) {
+            minimap.update(cam.getLocation());
         }
     }
 

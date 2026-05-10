@@ -7,6 +7,7 @@ import com.jme3.renderer.RenderManager;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.shape.Box;
+import com.jme3.system.AppSettings;
 
 /**
  * This is the Main Class of your Game. You should only do initialization here.
@@ -18,6 +19,22 @@ public class Main extends SimpleApplication {
 
     public static void main(String[] args) {
         Main app = new Main();
+
+        AppSettings settings = new AppSettings(true);
+        settings.setTitle("MineKraft");
+
+        // 4x MSAA
+        settings.setSamples(4);
+
+        settings.setResolution(1280, 768);
+        settings.setSamples(16);
+        settings.setVSync(false);
+        settings.setFrameRate(-1);
+        settings.setBitsPerPixel(32);
+        settings.setGammaCorrection(false);
+
+        app.setSettings(settings);
+        app.setShowSettings(false);
         app.start();
     }
 

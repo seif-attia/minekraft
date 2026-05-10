@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.Set;
 import com.jme3.app.Application;
+import com.jme3.asset.TextureKey;
 
 /**
  * Manages the infinite voxel world using a sliding window algorithm.
@@ -24,7 +25,7 @@ import com.jme3.app.Application;
  */
 public class WorldManager {
 
-    private int renderDistance = 3; // Loads a grid of chunks around the player, so its nxn + 1
+    private int renderDistance = 10; // Loads a grid of chunks around the player, so its nxn + 1
 
     private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
     private Map<ChunkPos, Geometry> activeGeometries = new HashMap<>();
@@ -58,9 +59,20 @@ public class WorldManager {
 
     private void initMaterial() {
         masterMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+
+        // Create a texture key for the mipmap
+        //        TextureKey key = new TextureKey("Textures/atlas.png", false);
+        //        key.setGenerateMips(true);
+        // Texture tex = assetManager.loadTexture(key);
         Texture tex = assetManager.loadTexture("Textures/atlas.png");
-        tex.setMagFilter(Texture.MagFilter.Nearest); // Removes blur for pixel art
+        // remove blur for pixel art
+        tex.setMagFilter(Texture.MagFilter.Nearest);
+
+        // activate mipmaps for blocks far away
         tex.setMinFilter(Texture.MinFilter.NearestNoMipMaps);
+
+        tex.setAnisotropicFilter(8);
+
         masterMaterial.setTexture("ColorMap", tex);
     }
 

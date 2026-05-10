@@ -25,7 +25,7 @@ import com.jme3.asset.TextureKey;
  */
 public class WorldManager {
 
-    private int renderDistance = 3; // Loads a grid of chunks around the player, so its nxn + 1
+    private int renderDistance = 20; // Loads a grid of chunks around the player, so its nxn + 1
 
     private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
     private Map<ChunkPos, Geometry> activeGeometries = new HashMap<>();
@@ -70,6 +70,7 @@ public class WorldManager {
 
         // activate mipmaps for blocks far away
         tex.setMinFilter(Texture.MinFilter.NearestNoMipMaps);
+        //masterMaterial.getAdditionalRenderState().setWireframe(true);
 
         tex.setAnisotropicFilter(8);
 
@@ -120,7 +121,7 @@ public class WorldManager {
         executor.submit(() -> {
 
             // --- BACKGROUND THREAD ---
-            // Creating arrays and calculating Meshes takes a lot of CPU power.
+            TerrainGenerator.generateTerrain(newChunk, pos.x(), pos.z());
             Mesh chunkMesh = mesher.createMesh(newChunk, WorldManager.this, pos.x(), pos.z());
 
             //  Send the finished Mesh back to the Main Thread safely

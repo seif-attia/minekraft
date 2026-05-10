@@ -129,6 +129,9 @@ public class ChunkMesher {
                 spriteX = 3;
                 spriteY = 0;
                 break;
+            case 4: // Water
+                spriteX = 4;
+                spriteY = 0;
         }
 
         // Send the chosen sprite coordinates to your existing UV math method

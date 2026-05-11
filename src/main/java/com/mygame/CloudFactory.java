@@ -46,7 +46,6 @@ public class CloudFactory {
         batchedClouds.setQueueBucket(RenderQueue.Bucket.Transparent);
         batchedClouds.setShadowMode(RenderQueue.ShadowMode.Cast);
         batchedClouds.setMaterial(cloudMat);
-
         batchedClouds.setCullHint(CullHint.Never);
         return batchedClouds;
     }

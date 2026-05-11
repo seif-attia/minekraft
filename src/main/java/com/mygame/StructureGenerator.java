@@ -12,8 +12,8 @@ import java.util.Random;
  */
 public class StructureGenerator {
 
-    private static final byte WOOD = 6;
-    private static final byte LEAVES = 7;
+    private static final byte WOOD = 7;
+    private static final byte LEAVES = 9;
     private static final Random rand = new Random();
 
     public static void buildOakTree(Chunk chunk, int localX, int surfaceY, int localZ) {

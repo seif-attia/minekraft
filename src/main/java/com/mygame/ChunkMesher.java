@@ -141,7 +141,7 @@ public class ChunkMesher {
     private void addTexCoords(List<Float> texCoords, int spriteX, int spriteY) {
 
         // to prevent texture bleed and highlighted block outlines
-        float offset = 0.001f;
+        float offset = 0.005f;
 
         // Calculate the UV boundaries for this specific sprite
         float u1 = spriteX / TEX_RES + offset;

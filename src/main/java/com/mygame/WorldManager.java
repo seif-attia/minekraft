@@ -17,6 +17,8 @@ import java.util.concurrent.Executors;
 import java.util.Set;
 import com.jme3.app.Application;
 import com.jme3.asset.TextureKey;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
  * Manages the infinite voxel world using a sliding window algorithm.
@@ -25,7 +27,7 @@ import com.jme3.asset.TextureKey;
  */
 public class WorldManager {
 
-    private int renderDistance = 20; // Loads a grid of chunks around the player, so its nxn + 1
+    private int renderDistance = 8; // Loads a grid of chunks around the player, so its nxn + 1
 
     private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
     private Map<ChunkPos, Geometry> activeGeometries = new HashMap<>();
@@ -35,6 +37,12 @@ public class WorldManager {
     private ExecutorService executor;
     // A set to save chunks that are queued for loading to avoid reloading them and to save compute
     private Set<ChunkPos> loadingChunks = ConcurrentHashMap.newKeySet();
+
+    // Optimizations
+    private int lastPlayerChunkX = Integer.MAX_VALUE;
+    private int lastPlayerChunkZ = Integer.MAX_VALUE;
+
+    private List<ChunkPos> chunkLoadQueue = new LinkedList<>();
 
     private Node worldNode;
     private ChunkMesher mesher;
@@ -78,34 +86,61 @@ public class WorldManager {
     }
 
     public void update(Vector3f playerLocation) {
-        // Check player's postion within the chunk
         int playerChunkX = (int) Math.floor(playerLocation.x / Chunk.CHUNK_SIZE);
         int playerChunkZ = (int) Math.floor(playerLocation.z / Chunk.CHUNK_SIZE);
 
-        // Load chunks within render distance
-        for (int x = -renderDistance; x <= renderDistance; x++) {
-            for (int z = -renderDistance; z <= renderDistance; z++) {
-                ChunkPos pos = new ChunkPos(playerChunkX + x, playerChunkZ + z);
+        // 1. BOUNDARY CHECK: Did the player actually move to a new chunk?
+        if (playerChunkX != lastPlayerChunkX || playerChunkZ != lastPlayerChunkZ) {
 
-                if (!activeChunks.containsKey(pos) && !loadingChunks.contains(pos)) {
-                    loadChunk(pos);
+            // Update the tracker
+            lastPlayerChunkX = playerChunkX;
+            lastPlayerChunkZ = playerChunkZ;
+
+            // Clear the old queue because the player moved, priorities changed!
+            chunkLoadQueue.clear();
+
+            // 2. SCAN FOR MISSING CHUNKS
+            for (int x = -renderDistance; x <= renderDistance; x++) {
+                for (int z = -renderDistance; z <= renderDistance; z++) {
+                    ChunkPos pos = new ChunkPos(playerChunkX + x, playerChunkZ + z);
+
+                    if (!activeChunks.containsKey(pos) && !loadingChunks.contains(pos)) {
+                        // Don't build it yet! Just add it to the waitlist.
+                        chunkLoadQueue.add(pos);
+                        chunkLoadQueue.sort((p1, p2) -> {
+                            double dist1 = Math.pow(p1.x() - playerChunkX, 2) + Math.pow(p1.z() - playerChunkZ, 2);
+                            double dist2 = Math.pow(p2.x() - playerChunkX, 2) + Math.pow(p2.z() - playerChunkZ, 2);
+                            return Double.compare(dist1, dist2);
+                        });
+                    }
                 }
             }
-        }
 
-        // Unload chunks outside render distance
-        List<ChunkPos> chunksToUnload = new ArrayList<>();
-
-        for (ChunkPos pos : activeChunks.keySet()) {
-            // kill any chunk that is outside render distance
-            if (Math.abs(pos.x() - playerChunkX) > renderDistance
-                    || Math.abs(pos.z() - playerChunkZ) > renderDistance) {
-                chunksToUnload.add(pos);
+            // 3. UNLOAD FAR CHUNKS
+            List<ChunkPos> chunksToUnload = new ArrayList<>();
+            for (ChunkPos pos : activeChunks.keySet()) {
+                if (Math.abs(pos.x() - playerChunkX) > renderDistance
+                        || Math.abs(pos.z() - playerChunkZ) > renderDistance) {
+                    chunksToUnload.add(pos);
+                }
+            }
+            for (ChunkPos pos : chunksToUnload) {
+                unloadChunk(pos);
             }
         }
 
-        for (ChunkPos pos : chunksToUnload) {
-            unloadChunk(pos);
+        // 4. TIME-SLICING: Only pop a few chunks off the queue per frame
+        // Processing 2 chunks per frame keeps 60FPS while loading terrain incredibly fast
+        int chunksToProcessThisFrame = 2;
+
+        while (!chunkLoadQueue.isEmpty() && chunksToProcessThisFrame > 0) {
+            ChunkPos pos = chunkLoadQueue.remove(0);
+
+            // Double check it wasn't loaded by a neighbor notification while waiting in queue
+            if (!activeChunks.containsKey(pos) && !loadingChunks.contains(pos)) {
+                loadChunk(pos);
+                chunksToProcessThisFrame--;
+            }
         }
     }
 

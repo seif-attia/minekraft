@@ -12,6 +12,9 @@ import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.Label;
 import com.simsilica.lemur.component.IconComponent;
 import com.simsilica.lemur.style.BaseStyles;
+import com.simsilica.lemur.HAlignment;
+import com.simsilica.lemur.VAlignment;
+
 
 public class MenuState extends BaseAppState {
 
@@ -34,16 +37,6 @@ public class MenuState extends BaseAppState {
         GuiGlobals.getInstance().getStyles().getSelector("glass").set("font", minekraftFont);
         GuiGlobals.getInstance().getStyles().getSelector("glass").set("fontSize", 32f);
         GuiGlobals.getInstance().getStyles().getSelector("button", "glass").set("preferredSize", new Vector3f(400, 50, 0));
-        GuiGlobals.getInstance().getStyles().getSelector("button", "glass").set("textElement.textHAlignment", com.jme3.font.BitmapFont.Align.Center);
-        GuiGlobals.getInstance().getStyles().getSelector("button", "glass").set("textElement.textVAlignment", com.jme3.font.BitmapFont.VAlign.Center);
-        // Get the selector for buttons in the glass style
-        var btnStyle = GuiGlobals.getInstance().getStyles().getSelector("button", "glass");
-
-        // Center horizontally
-        btnStyle.set("textElement.textHAlignment", com.jme3.font.BitmapFont.Align.Center);
-
-        // Center vertically
-        btnStyle.set("textElement.textVAlignment", com.jme3.font.BitmapFont.VAlign.Center);
 
         GuiGlobals.getInstance().getStyles().setDefaultStyle("glass");
 
@@ -90,9 +83,20 @@ public class MenuState extends BaseAppState {
         Button quitBtn = myWindow.addChild(new Button("Quit"));
         quitBtn.addClickCommands(source -> System.exit(0));
         myWindow.setLocalTranslation(screenWidth / 2, screenHeight / 2, 0);
+        // Change BitmapFont.Align.Center to HAlignment.Center
+        WorldsBtn.setTextHAlignment(HAlignment.Center);
+        settingsBtn.setTextHAlignment(HAlignment.Center);
+        creditsBtn.setTextHAlignment(HAlignment.Center);
+        quitBtn.setTextHAlignment(HAlignment.Center);
+
+        // Change BitmapFont.VAlign.Center to VAlignment.Center
+        WorldsBtn.setTextVAlignment(VAlignment.Center);
+        settingsBtn.setTextVAlignment(VAlignment.Center);
+        creditsBtn.setTextVAlignment(VAlignment.Center);
+        quitBtn.setTextVAlignment(VAlignment.Center);
         
         Vector3f size = myWindow.getPreferredSize();
-        myWindow.setLocalTranslation(screenWidth / 2 - size.x / 2, screenHeight / 2 + size.y / 2, 0);
+        myWindow.setLocalTranslation(screenWidth / 2 - size.x / 2, (screenHeight / 2 + size.y / 2) - 80, 0);
     }
 
     private void startGame() {

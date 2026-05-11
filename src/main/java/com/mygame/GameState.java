@@ -14,6 +14,7 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.RenderManager;
 import com.jme3.math.Vector3f;
 import com.jme3.post.FilterPostProcessor;
+import com.jme3.post.filters.BloomFilter;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
@@ -26,9 +27,10 @@ import com.jme3.scene.shape.Sphere;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
 import com.jme3.shadow.EdgeFilteringMode;
 import com.jme3.shadow.DirectionalLightShadowFilter;
+import java.util.HashSet;
 
 public class GameState extends BaseAppState {
-
+    
     private SimpleApplication app;
     private WorldManager myWorld;
     private Camera cam;
@@ -50,7 +52,7 @@ public class GameState extends BaseAppState {
     private ParticleEmitter ambientDust;
     private LightScatteringFilter godRays;
     private DirectionalLight sun;
-
+    
     @Override
     protected void initialize(Application app) {
         // Cast to SimpleApplication to access rootNode, assetManager, etc.
@@ -63,7 +65,7 @@ public class GameState extends BaseAppState {
 
         // Initialize the world logic moved from Main.simpleInitApp
         myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
-
+        
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
 
         // Setup camera
@@ -80,7 +82,7 @@ public class GameState extends BaseAppState {
         sun = new DirectionalLight();
         sun.setColor(ColorRGBA.White.mult(1.2f)); // Slightly brighter than white
         // Pointing down and slightly to the side to cast cool angled shadows
-        sun.setDirection(new Vector3f(-0.8f, -1.2f, -0.3f).normalizeLocal());
+        sun.setDirection(new Vector3f(-0.8f, -0.4f, -0.3f).normalizeLocal());
         rootNode.addLight(sun);
 
         // Setup sun object
@@ -89,15 +91,15 @@ public class GameState extends BaseAppState {
         Material sunMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         sunMat.setColor("Color", new ColorRGBA(4.0f, 3.8f, 2.5f, 1.0f)); // Warm yellow/white
         sunGeom.setMaterial(sunMat);
-
+        
         sunGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Off);
-
+        
         rootNode.attachChild(sunGeom);
-
+        
         float sunDistance = 800f;
         Vector3f sunOrigin = sun.getDirection().mult(-sunDistance);
         sunGeom.setLocalTranslation(sunOrigin);
-
+        
         FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
 
         // 2. THE SHADOW FILTER
@@ -110,26 +112,42 @@ public class GameState extends BaseAppState {
         fpp.addFilter(dlsf);
 
         // 2. Create the God Rays filter
+        // 1. ADD BLOOM (Makes the Sun physically glow like a star)
+        BloomFilter bloom = new BloomFilter();
+        bloom.setBloomIntensity(1.5f); // How bright the glow is
+        bloom.setExposurePower(4.0f);
+        bloom.setBlurScale(1.2f);      // How far the glow spreads
+        fpp.addFilter(bloom);
+        // THE GOD RAYS
         LightScatteringFilter lsf = new LightScatteringFilter(sunOrigin);
-        lsf.setLightDensity(1.4f); // Thick, heavy rays
+
+        // Push the density even higher to force the light to stretch further
+        lsf.setLightDensity(1.8f);
+
+        // Keep the shafts fat
         lsf.setBlurWidth(0.8f);
+
+        // --- THE ACTUAL jME QUALITY MULTIPLIER ---
+        // By default, jME only samples the light 50 times. 
+        // Doubling this to 100 or 150 makes the rays drastically denser, smoother, 
+        // and much more noticeable as they drag across the screen.
+        lsf.setNbSamples(120);
+        
         fpp.addFilter(lsf);
-
-        // Save this to a global variable so we can move it later!
         this.godRays = lsf;
-
+        
         ////////////////////////////////////////////////
         // 3. THE FOG FILTER
         FogFilter fog = new FogFilter();
         fog.setFogColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
         fog.setFogDistance(150);
         fog.setFogDensity(1f);
-
+        
         fpp.addFilter(fog);
 
         // 4. ATTACH TO VIEWPORT
         viewPort.addProcessor(fpp);
-
+        
         viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
 
         // init clouds
@@ -172,18 +190,18 @@ public class GameState extends BaseAppState {
         // Note: We have to make this a global variable so the update loop can see it!
         this.ambientDust = dust;
     }
-
+    
     @Override
     public void update(float tpf) {
         // The game loop logic moved from Main.simpleUpdate
         if (myWorld != null) {
             myWorld.update(cam.getLocation());
         }
-
+        
         if (minimap != null) {
             minimap.update(cam.getLocation());
         }
-
+        
         if (ambientDust != null) {
             ambientDust.setLocalTranslation(cam.getLocation());
         }
@@ -204,16 +222,16 @@ public class GameState extends BaseAppState {
 
         // Cloud moving / drifting logic
         cloudTimer += tpf * 0.5f;
-
+        
         float camX = cam.getLocation().x;
         float camZ = cam.getLocation().z;
-
+        
         float snapX = (float) Math.floor((camX - cloudTimer + 500f) / 1000f) * 1000f;
         float snapZ = (float) Math.floor((camZ + 500f) / 1000f) * 1000f;
-
+        
         cloudLayer.setLocalTranslation(snapX - 1200 + cloudTimer, 350, snapZ - 1200);
     }
-
+    
     @Override
     protected void cleanup(Application app) {
         // Clean up the world when this state is detached
@@ -221,12 +239,12 @@ public class GameState extends BaseAppState {
             myWorld.destroy();
         }
     }
-
+    
     @Override
     protected void onEnable() {
         // Logic for when the game is unpaused or shown
     }
-
+    
     @Override
     protected void onDisable() {
         // Logic for when the game is paused or hidden

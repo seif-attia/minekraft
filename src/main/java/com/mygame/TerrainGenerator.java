@@ -12,6 +12,10 @@ public class TerrainGenerator {
 
     public static final int SEA_LEVEL = 64;
 
+    // world seed
+    private static final int SEED_OFFSET_X = new java.util.Random().nextInt(1000000);
+    private static final int SEED_OFFSET_Z = new java.util.Random().nextInt(1000000);
+
     /**
      * Fills an empty Chunk with terrain data based on global coordinates.
      */
@@ -19,8 +23,8 @@ public class TerrainGenerator {
         for (int localX = 0; localX < Chunk.CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < Chunk.CHUNK_SIZE; localZ++) {
 
-                int globalX = (chunkX * Chunk.CHUNK_SIZE) + localX;
-                int globalZ = (chunkZ * Chunk.CHUNK_SIZE) + localZ;
+                int globalX = (chunkX * Chunk.CHUNK_SIZE) + localX + SEED_OFFSET_X;
+                int globalZ = (chunkZ * Chunk.CHUNK_SIZE) + localZ + SEED_OFFSET_Z;
 
                 int columnHeight = generateHeight(globalX, globalZ);
                 int heightRight = generateHeight(globalX + 1, globalZ);
@@ -76,12 +80,28 @@ public class TerrainGenerator {
                         chunk.setBlock(localX, y, localZ, (byte) 4); // WATER
                     }
                 }
+
+                // Spawn Foliage
+                if (chunk.getBlock(localX, columnHeight, localZ) == 2) {
+
+                    double randomSeed = Math.random();
+
+                    // Trees
+                    if (randomSeed < 0.005) {
+                        StructureGenerator.buildOakTree(chunk, localX, columnHeight, localZ);
+                    } // Tall grass
+                    else if (randomSeed < 0.05) {
+                        if (chunk.getBlock(localX, columnHeight + 1, localZ) == 0) {
+                            chunk.setBlock(localX, columnHeight + 1, localZ, (byte) 8);
+                        }
+                    }
+                }
             }
         }
     }
 
     // =========================================================================
-    // ROLE 3's MATH FUNCTIONS (Preserved exactly, just made static)
+    // ROLE 3's MATH 
     // =========================================================================
     private static int generateHeight(double x, double z) {
 
@@ -90,14 +110,11 @@ public class TerrainGenerator {
         double baseNoise = getLayeredNoise(x, z, 0.002f, 4, 0.5);
         double baseHeight = 75 + (baseNoise * 20); // Base sits comfortably around Y=75
 
-        // 2. TRUE MOUNTAINS
-        // We use ridged noise, but we cube it (m * m * m). 
-        // This forces 80% of the map to stay flat, but the remaining 20% violently spikes into mountains.
+        // TRUE MOUNTAINS
         double m = getRidgedNoise(x + 1000, z + 1000, 0.003f, 4, 0.5);
         double mountainHeight = m * m * m * 160; // Up to 160 blocks tall!
 
         // 3. MICRO-DETAILS
-        // High frequency noise that adds +/- 3 blocks of random bumps everywhere to kill flat plateaus
         double detail = getLayeredNoise(x, z, 0.03f, 2, 0.5) * 3;
 
         // 4. RIVERS

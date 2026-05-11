@@ -10,11 +10,14 @@ public class Chunk {
 
     // blocks 
     /*
-        air ->          0
-        dirt  ->        1
-        grass->         2
-        bedrock/stone-> 3
-        water ->        4
+        air  0
+        dirt  1
+        grass 2
+        stone 3
+        water 4
+        Wood 6
+        leaves 7
+        tall grass 8
      */
     private byte[][][] blocks;
 

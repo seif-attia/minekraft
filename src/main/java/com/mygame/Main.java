@@ -28,7 +28,6 @@ public class Main extends SimpleApplication {
 
         setDisplayFps(true);
         setDisplayStatView(true);
-
         stateManager.attach(new MenuState());
 
     }

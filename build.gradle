@@ -71,6 +71,7 @@ dependencies {
   implementation "org.jmonkeyengine:jme3-desktop:$jmeVer"
   implementation "com.simsilica:lemur:1.16.0"
   implementation "com.simsilica:lemur-proto:1.13.0"
+  implementation 'org.slf4j:slf4j-simple:2.0.12'
   implementation "org.apache.groovy:groovy-all:4.0.21"
   // Mac OS with LWJGL 3 doesn't allow AWT/Swing
   if (!System.getProperty("os.name").toLowerCase().contains("mac")) {

@@ -161,7 +161,17 @@ public class ChunkMesher {
             Geometry geom = new Geometry("Blocks_" + blockId, mesh);
             // Grab the repeating material we made in WorldManager!
             geom.setMaterial(world.getMaterialForBlock(blockId));
-            geom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.CastAndReceive);
+            // --- THE WATER FIX ---
+            if (blockId == 5) { // If this geometry is the Water mesh
+                // 1. Draw it LAST so we can see the solid blocks behind it
+                geom.setQueueBucket(com.jme3.renderer.queue.RenderQueue.Bucket.Transparent);
+
+                // 2. Stop water from casting solid pitch-black shadows onto the ocean floor
+                geom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Receive);
+            } else {
+                // All other solid blocks cast and receive shadows normally
+                geom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.CastAndReceive);
+            }
             chunkNode.attachChild(geom);
         }
 

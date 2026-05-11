@@ -7,6 +7,10 @@ import com.jme3.asset.AssetManager;
 import com.jme3.effect.ParticleEmitter;
 import com.jme3.effect.ParticleMesh;
 import com.jme3.effect.shapes.EmitterBoxShape;
+import com.jme3.input.InputManager;
+import com.jme3.input.KeyInput;
+import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.KeyTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.material.Material;
@@ -30,7 +34,7 @@ import com.jme3.shadow.DirectionalLightShadowFilter;
 import java.util.HashSet;
 
 public class GameState extends BaseAppState {
-    
+
     private SimpleApplication app;
     private WorldManager myWorld;
     private Camera cam;
@@ -39,6 +43,7 @@ public class GameState extends BaseAppState {
     private RenderManager renderManager;
     private ViewPort viewPort;
     private AssetManager assetManager;
+    private InputManager inputManager;
 
     // Sun
     private Geometry sunGeom;
@@ -52,7 +57,7 @@ public class GameState extends BaseAppState {
     private ParticleEmitter ambientDust;
     private LightScatteringFilter godRays;
     private DirectionalLight sun;
-    
+
     @Override
     protected void initialize(Application app) {
         // Cast to SimpleApplication to access rootNode, assetManager, etc.
@@ -62,10 +67,11 @@ public class GameState extends BaseAppState {
         this.renderManager = this.app.getRenderManager();
         this.viewPort = this.app.getViewPort();
         this.assetManager = this.app.getAssetManager();
+        this.inputManager = this.app.getInputManager();
 
         // Initialize the world logic moved from Main.simpleInitApp
         myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
-        
+
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
 
         // Setup camera
@@ -91,15 +97,15 @@ public class GameState extends BaseAppState {
         Material sunMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         sunMat.setColor("Color", new ColorRGBA(4.0f, 3.8f, 2.5f, 1.0f)); // Warm yellow/white
         sunGeom.setMaterial(sunMat);
-        
+
         sunGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Off);
-        
+
         rootNode.attachChild(sunGeom);
-        
+
         float sunDistance = 800f;
         Vector3f sunOrigin = sun.getDirection().mult(-sunDistance);
         sunGeom.setLocalTranslation(sunOrigin);
-        
+
         FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
 
         // 2. THE SHADOW FILTER
@@ -132,22 +138,22 @@ public class GameState extends BaseAppState {
         // Doubling this to 100 or 150 makes the rays drastically denser, smoother, 
         // and much more noticeable as they drag across the screen.
         lsf.setNbSamples(120);
-        
+
         fpp.addFilter(lsf);
         this.godRays = lsf;
-        
+
         ////////////////////////////////////////////////
         // 3. THE FOG FILTER
         FogFilter fog = new FogFilter();
         fog.setFogColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
         fog.setFogDistance(150);
         fog.setFogDensity(1f);
-        
+
         fpp.addFilter(fog);
 
         // 4. ATTACH TO VIEWPORT
         viewPort.addProcessor(fpp);
-        
+
         viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
 
         // init clouds
@@ -189,19 +195,34 @@ public class GameState extends BaseAppState {
 
         // Note: We have to make this a global variable so the update loop can see it!
         this.ambientDust = dust;
+
+        // wireframe toggle
+        inputManager.addMapping("ToggleWireframe", new KeyTrigger(KeyInput.KEY_X));
+
+        // 2. Tell the InputManager what to do when "ToggleWireframe" is triggered
+        inputManager.addListener(new ActionListener() {
+            @Override
+            public void onAction(String name, boolean isPressed, float tpf) {
+                // We only want it to trigger once when the key is PRESSED, not when released
+                if (name.equals("ToggleWireframe") && isPressed) {
+                    myWorld.toggleWireframe();
+                }
+            }
+        }, "ToggleWireframe");
+
     }
-    
+
     @Override
     public void update(float tpf) {
         // The game loop logic moved from Main.simpleUpdate
         if (myWorld != null) {
             myWorld.update(cam.getLocation());
         }
-        
+
         if (minimap != null) {
             minimap.update(cam.getLocation());
         }
-        
+
         if (ambientDust != null) {
             ambientDust.setLocalTranslation(cam.getLocation());
         }
@@ -222,16 +243,16 @@ public class GameState extends BaseAppState {
 
         // Cloud moving / drifting logic
         cloudTimer += tpf * 0.5f;
-        
+
         float camX = cam.getLocation().x;
         float camZ = cam.getLocation().z;
-        
+
         float snapX = (float) Math.floor((camX - cloudTimer + 500f) / 1000f) * 1000f;
         float snapZ = (float) Math.floor((camZ + 500f) / 1000f) * 1000f;
-        
+
         cloudLayer.setLocalTranslation(snapX - 1200 + cloudTimer, 350, snapZ - 1200);
     }
-    
+
     @Override
     protected void cleanup(Application app) {
         // Clean up the world when this state is detached
@@ -239,12 +260,12 @@ public class GameState extends BaseAppState {
             myWorld.destroy();
         }
     }
-    
+
     @Override
     protected void onEnable() {
         // Logic for when the game is unpaused or shown
     }
-    
+
     @Override
     protected void onDisable() {
         // Logic for when the game is paused or hidden

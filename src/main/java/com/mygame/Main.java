@@ -13,6 +13,8 @@ public class Main extends SimpleApplication {
         settings.setTitle("MineKraft");
         settings.setSamples(16);
         settings.setResolution(1280, 768);
+//        settings.setResolution(1920, 1080);
+//        settings.setFullscreen(true);
         settings.setVSync(false);
         settings.setFrameRate(-1);
         settings.setBitsPerPixel(32);

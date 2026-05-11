@@ -1,462 +1,510 @@
 package com.mygame;
 
+import com.jme3.math.Vector2f;
+import com.jme3.math.Vector3f;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
-import com.jme3.scene.VertexBuffer;
-import com.jme3.util.BufferUtils; // CRITICAL: Use the jME one, not LWJGL!
+import com.jme3.scene.VertexBuffer.Type;
+import com.jme3.util.BufferUtils;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-/**
- * Handles the generation of 3D geometry from raw voxel chunk data.
- *
- * @author EyonMiner
- */
 public class ChunkMesher {
 
-    /**
-     * Iterates through chunk data and builds an optimized jME Mesh using Face
-     * Culling.
-     */
-    private static final float TEX_RES = 16f;
+    // Helper class to hold mesh data for EACH specific block type
+    private class MeshBuilder {
 
-    public Mesh createMesh(Chunk chunk, WorldManager world, int chunkX, int chunkZ) {
         List<Float> positions = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
-        int vertexOffset = 0; // Keeps track of the index for triangles
         List<Float> texCoords = new ArrayList<>();
         List<Float> normals = new ArrayList<>();
+        int vertexOffset = 0;
+    }
 
-        for (int localX = 0; localX < Chunk.CHUNK_SIZE; localX++) {
-            for (int y = 0; y < Chunk.CHUNK_HEIGHT; y++) {
-                for (int localZ = 0; localZ < Chunk.CHUNK_SIZE; localZ++) {
+    private boolean shouldDrawFace(byte currentBlock, byte neighborBlock) {
+        if (neighborBlock == 0) {
+            return true;
+        }
+        if (currentBlock == neighborBlock) {
+            return false;
+        }
+        // Draw against transparent blocks (Assuming 4 is Water, 8 is Leaves)
+        return neighborBlock == 5 || neighborBlock == 9 || neighborBlock == 10;
+    }
 
-                    byte blockId = chunk.getBlock(localX, y, localZ);
-                    if (blockId == 0) {
-                        continue; // Skip air 
-                    }
+    /**
+     * Builds the Greedy Mesh and returns a Node containing one Geometry per
+     * Block ID.
+     */
+    public Node createMesh(Chunk chunk, WorldManager world, int chunkX, int chunkZ) {
+        Node chunkNode = new Node("ChunkNode");
+        Map<Byte, MeshBuilder> builders = new HashMap<>();
 
-                    int globalX = (chunkX * Chunk.CHUNK_SIZE) + localX;
-                    int globalZ = (chunkZ * Chunk.CHUNK_SIZE) + localZ;
+        // ====================================================================
+        // 1. Y-AXIS (TOP AND BOTTOM FACES)
+        // ====================================================================
+        for (int y = 0; y < Chunk.CHUNK_HEIGHT; y++) {
+            byte[][] maskTop = new byte[16][16];
+            byte[][] maskBot = new byte[16][16];
 
-                    if (blockId == 8) {
-                        vertexOffset = addCrossMesh(positions, indices, texCoords, normals, localX, y, localZ, vertexOffset);
+            // Build the 2D visual mask for this slice
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    byte b = chunk.getBlock(x, y, z);
+                    if (b == 0 || b == 10) {
                         continue;
                     }
+                    int globalX = (chunkX * 16) + x;
+                    int globalZ = (chunkZ * 16) + z;
 
-                    // --- FACE CULLING ---
-                    // Top Face Check (+Y)
-                    // checking blocks at global coords relative to all neighboring chunks
-                    if (isTransparent(world.getBlockGlobal(globalX, y + 1, globalZ))) {
-                        // keep draw coords local to the chunk itself
-                        addTopFaceVertices(positions, normals, localX, y, localZ);
-                        //add textures
-                        assignTextureForBlock(texCoords, blockId, "TOP");
+                    if (shouldDrawFace(b, world.getBlockGlobal(globalX, y + 1, globalZ))) {
+                        maskTop[x][z] = getFaceTexture(b, "TOP");
+                    }
+                    if (shouldDrawFace(b, world.getBlockGlobal(globalX, y - 1, globalZ))) {
+                        maskBot[x][z] = getFaceTexture(b, "BOTTOM");
+                    }
+                }
+            }
+            // Sweep the masks and generate the giant rectangles
+            sweepY(maskTop, builders, y, true);
+            sweepY(maskBot, builders, y, false);
+        }
 
-                        addIndices(indices, vertexOffset);
-                        vertexOffset += 4;
+        // ====================================================================
+        // 2. Z-AXIS (FRONT AND BACK FACES)
+        // ====================================================================
+        for (int z = 0; z < 16; z++) {
+            byte[][] maskFront = new byte[16][Chunk.CHUNK_HEIGHT];
+            byte[][] maskBack = new byte[16][Chunk.CHUNK_HEIGHT];
+
+            for (int x = 0; x < 16; x++) {
+                for (int y = 0; y < Chunk.CHUNK_HEIGHT; y++) {
+                    byte b = chunk.getBlock(x, y, z);
+                    if (b == 0 || b == 10) {
+                        continue;
                     }
-                    // Bottom Face Check (-Y)
-                    if (isTransparent(world.getBlockGlobal(globalX, y - 1, globalZ))) {
-                        addBottomFaceVertices(positions, normals, localX, y, localZ);
-                        //add textures
-                        assignTextureForBlock(texCoords, blockId, "BOTTOM");
-                        addIndices(indices, vertexOffset);
-                        vertexOffset += 4;
+                    int globalX = (chunkX * 16) + x;
+                    int globalZ = (chunkZ * 16) + z;
+
+                    if (shouldDrawFace(b, world.getBlockGlobal(globalX, y, globalZ + 1))) {
+                        maskFront[x][y] = getFaceTexture(b, "SIDE");
                     }
-                    // Front Face Check (+Z)
-                    if (isTransparent(world.getBlockGlobal(globalX, y, globalZ + 1))) {
-                        addFrontFaceVertices(positions, normals, localX, y, localZ);
-                        //add textures
-                        assignTextureForBlock(texCoords, blockId, "FRONT");
-                        addIndices(indices, vertexOffset);
-                        vertexOffset += 4;
+                    if (shouldDrawFace(b, world.getBlockGlobal(globalX, y, globalZ - 1))) {
+                        maskBack[x][y] = getFaceTexture(b, "SIDE");
                     }
-                    // Back Face Check (-Z)
-                    if (isTransparent(world.getBlockGlobal(globalX, y, globalZ - 1))) {
-                        addBackFaceVertices(positions, normals, localX, y, localZ);
-                        //add textures
-                        assignTextureForBlock(texCoords, blockId, "BACK");
-                        addIndices(indices, vertexOffset);
-                        vertexOffset += 4;
+                }
+            }
+            sweepZ(maskFront, builders, z, true);
+            sweepZ(maskBack, builders, z, false);
+        }
+
+        // ====================================================================
+        // 3. X-AXIS (LEFT AND RIGHT FACES)
+        // ====================================================================
+        for (int x = 0; x < 16; x++) {
+            byte[][] maskRight = new byte[16][Chunk.CHUNK_HEIGHT];
+            byte[][] maskLeft = new byte[16][Chunk.CHUNK_HEIGHT];
+
+            for (int z = 0; z < 16; z++) {
+                for (int y = 0; y < Chunk.CHUNK_HEIGHT; y++) {
+                    byte b = chunk.getBlock(x, y, z);
+                    if (b == 0 || b == 10) {
+                        continue;
                     }
-                    // Right Face Check (+X)
-                    if (isTransparent(world.getBlockGlobal(globalX + 1, y, globalZ))) {
-                        addRightFaceVertices(positions, normals, localX, y, localZ);
-                        //add textures
-                        assignTextureForBlock(texCoords, blockId, "RIGHT");
-                        addIndices(indices, vertexOffset);
-                        vertexOffset += 4;
+                    int globalX = (chunkX * 16) + x;
+                    int globalZ = (chunkZ * 16) + z;
+
+                    if (shouldDrawFace(b, world.getBlockGlobal(globalX + 1, y, globalZ))) {
+                        maskRight[z][y] = getFaceTexture(b, "SIDE");
                     }
-                    // Left Face Check (-X)
-                    if (isTransparent(world.getBlockGlobal(globalX - 1, y, globalZ))) {
-                        addLeftFaceVertices(positions, normals, localX, y, localZ);
-                        //add textures
-                        assignTextureForBlock(texCoords, blockId, "LEFT");
-                        addIndices(indices, vertexOffset);
-                        vertexOffset += 4;
+                    if (shouldDrawFace(b, world.getBlockGlobal(globalX - 1, y, globalZ))) {
+                        maskLeft[z][y] = getFaceTexture(b, "SIDE");
+                    }
+                }
+            }
+            sweepX(maskRight, builders, x, true);
+            sweepX(maskLeft, builders, x, false);
+        }
+
+        // ====================================================================
+        // 4. CROSS MESHES (Tall Grass, Flowers, Saplings)
+        // ====================================================================
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < Chunk.CHUNK_HEIGHT; y++) {
+                for (int z = 0; z < 16; z++) {
+                    byte b = chunk.getBlock(x, y, z);
+                    if (b == 10) { // If it is Tall Grass
+                        MeshBuilder bld = builders.computeIfAbsent(b, k -> new MeshBuilder());
+                        buildCrossMesh(bld, x, y, z);
                     }
                 }
             }
         }
 
-        // Convert raw lists into a compiled jME Mesh
-        return buildJmeMesh(positions, indices, texCoords, normals);
+        // ====================================================================
+        // COMPILE INTO GEOMETRIES
+        // ====================================================================
+        for (Map.Entry<Byte, MeshBuilder> entry : builders.entrySet()) {
+            byte blockId = entry.getKey();
+            MeshBuilder builder = entry.getValue();
+
+            Mesh mesh = new Mesh();
+            mesh.setBuffer(Type.Position, 3, BufferUtils.createFloatBuffer(toFloatArray(builder.positions)));
+            mesh.setBuffer(Type.Index, 3, BufferUtils.createIntBuffer(toIntArray(builder.indices)));
+            mesh.setBuffer(Type.TexCoord, 2, BufferUtils.createFloatBuffer(toFloatArray(builder.texCoords)));
+            mesh.setBuffer(Type.Normal, 3, BufferUtils.createFloatBuffer(toFloatArray(builder.normals)));
+            mesh.updateBound();
+
+            Geometry geom = new Geometry("Blocks_" + blockId, mesh);
+            // Grab the repeating material we made in WorldManager!
+            geom.setMaterial(world.getMaterialForBlock(blockId));
+            // --- THE WATER FIX ---
+            if (blockId == 5) { // If this geometry is the Water mesh
+                // 1. Draw it LAST so we can see the solid blocks behind it
+                geom.setQueueBucket(com.jme3.renderer.queue.RenderQueue.Bucket.Transparent);
+
+                // 2. Stop water from casting solid pitch-black shadows onto the ocean floor
+                geom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Receive);
+            } else {
+                // All other solid blocks cast and receive shadows normally
+                geom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.CastAndReceive);
+            }
+            chunkNode.attachChild(geom);
+        }
+
+        return chunkNode;
     }
 
-    private void assignTextureForBlock(List<Float> texCoords, byte blockId, String faceDirection) {
-        int spriteX = 0;
-        int spriteY = 0;
+    // ========================================================================
+    // GREEDY SWEEPERS
+    // ========================================================================
+    private void sweepY(byte[][] mask, Map<Byte, MeshBuilder> builders, int y, boolean isTop) {
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                if (mask[x][z] != 0) {
+                    byte id = mask[x][z];
+                    int w = 1, h = 1;
 
-        switch (blockId) {
-            case 1: // Dirt
-                spriteX = 0;
-                spriteY = 0;
-                break;
+                    // 1. Expand Width (X)
+                    while (x + w < 16 && mask[x + w][z] == id) {
+                        w++;
+                    }
 
-            case 2: // Grass
-                switch (faceDirection) {
-                    case "TOP":
-                        spriteX = 2; // Grass Top texture
-                        spriteY = 0;
-                        break;
-                    case "BOTTOM":
-                        spriteX = 0; // The bottom of a grass block (dirt)
-                        spriteY = 0;
-                        break;
-                    default: // SIDES ("FRONT", "BACK", "LEFT", "RIGHT")
-                        spriteX = 1; // Grass Side texture
-                        spriteY = 0;
-                        break;
+                    // 2. Expand Height (Z)
+                    boolean done = false;
+                    while (z + h < 16) {
+                        for (int k = 0; k < w; k++) {
+                            if (mask[x + k][z + h] != id) {
+                                done = true;
+                                break;
+                            }
+                        }
+                        if (done) {
+                            break;
+                        }
+                        h++;
+                    }
+
+                    // 3. Generate Quad
+                    MeshBuilder b = builders.computeIfAbsent(id, k -> new MeshBuilder());
+                    float yPos = isTop ? y + 1f : y;
+
+                    b.positions.add((float) x);
+                    b.positions.add(yPos);
+                    b.positions.add((float) z + h); // V0
+                    b.positions.add((float) x + w);
+                    b.positions.add(yPos);
+                    b.positions.add((float) z + h); // V1
+                    b.positions.add((float) x);
+                    b.positions.add(yPos);
+                    b.positions.add((float) z);   // V2
+                    b.positions.add((float) x + w);
+                    b.positions.add(yPos);
+                    b.positions.add((float) z);   // V3
+
+                    for (int i = 0; i < 4; i++) {
+                        b.normals.add(0f);
+                        b.normals.add(isTop ? 1f : -1f);
+                        b.normals.add(0f);
+                    }
+
+                    // CRITICAL: We pass the width and height to the UVs so the texture repeats perfectly!
+                    b.texCoords.add(0f);
+                    b.texCoords.add(0f);
+                    b.texCoords.add((float) w);
+                    b.texCoords.add(0f);
+                    b.texCoords.add(0f);
+                    b.texCoords.add((float) h);
+                    b.texCoords.add((float) w);
+                    b.texCoords.add((float) h);
+
+                    addIndices(b.indices, b.vertexOffset, isTop);
+                    b.vertexOffset += 4;
+
+                    // 4. Erase the rectangle from the mask
+                    for (int i = 0; i < w; i++) {
+                        for (int j = 0; j < h; j++) {
+                            mask[x + i][z + j] = 0;
+                        }
+                    }
                 }
-                break;
+            }
+        }
+    }
 
-            case 3: // Bedrock
-                spriteX = 3;
-                spriteY = 0;
-                break;
-            case 4: // Water
-                spriteX = 4;
-                spriteY = 0;
-                break;
-            case 5: // snow
-                spriteX = 5;
-                spriteY = 0;
-                break;
-            case 6: // Oak wood
-                if (faceDirection.equals("TOP") || faceDirection.equals("BOTTOM")) {
-                    spriteX = 7;
-                    spriteY = 0;
-                } else {
-                    spriteX = 6;
-                    spriteY = 0;
+    private void sweepZ(byte[][] mask, Map<Byte, MeshBuilder> builders, int z, boolean isFront) {
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < Chunk.CHUNK_HEIGHT; y++) {
+                if (mask[x][y] != 0) {
+                    byte id = mask[x][y];
+                    int w = 1, h = 1;
+                    while (x + w < 16 && mask[x + w][y] == id) {
+                        w++;
+                    }
+                    boolean done = false;
+                    while (y + h < Chunk.CHUNK_HEIGHT) {
+                        for (int k = 0; k < w; k++) {
+                            if (mask[x + k][y + h] != id) {
+                                done = true;
+                                break;
+                            }
+                        }
+                        if (done) {
+                            break;
+                        }
+                        h++;
+                    }
+
+                    MeshBuilder b = builders.computeIfAbsent(id, k -> new MeshBuilder());
+                    float zPos = isFront ? z + 1f : z;
+
+                    b.positions.add((float) x);
+                    b.positions.add((float) y);
+                    b.positions.add(zPos);
+                    b.positions.add((float) x + w);
+                    b.positions.add((float) y);
+                    b.positions.add(zPos);
+                    b.positions.add((float) x);
+                    b.positions.add((float) y + h);
+                    b.positions.add(zPos);
+                    b.positions.add((float) x + w);
+                    b.positions.add((float) y + h);
+                    b.positions.add(zPos);
+
+                    for (int i = 0; i < 4; i++) {
+                        b.normals.add(0f);
+                        b.normals.add(0f);
+                        b.normals.add(isFront ? 1f : -1f);
+                    }
+
+                    b.texCoords.add(0f);
+                    b.texCoords.add(0f);
+                    b.texCoords.add((float) w);
+                    b.texCoords.add(0f);
+                    b.texCoords.add(0f);
+                    b.texCoords.add((float) h);
+                    b.texCoords.add((float) w);
+                    b.texCoords.add((float) h);
+
+                    addIndices(b.indices, b.vertexOffset, isFront);
+                    b.vertexOffset += 4;
+
+                    for (int i = 0; i < w; i++) {
+                        for (int j = 0; j < h; j++) {
+                            mask[x + i][y + j] = 0;
+                        }
+                    }
                 }
-                break;
-            case 7: // leaves
-                spriteX = 8;
-                spriteY = 0;
-                break;
-            case 8: // tall grass
-                spriteX = 9;
-                spriteY = 0;
-                break;
+            }
         }
-
-        // Send the chosen sprite coordinates to your existing UV math method
-        addTexCoords(texCoords, spriteX, spriteY);
     }
 
-    private void addTexCoords(List<Float> texCoords, int spriteX, int spriteY) {
+    private void sweepX(byte[][] mask, Map<Byte, MeshBuilder> builders, int x, boolean isRight) {
+        for (int z = 0; z < 16; z++) {
+            for (int y = 0; y < Chunk.CHUNK_HEIGHT; y++) {
+                if (mask[z][y] != 0) {
+                    byte id = mask[z][y];
+                    int w = 1, h = 1;
+                    while (z + w < 16 && mask[z + w][y] == id) {
+                        w++;
+                    }
+                    boolean done = false;
+                    while (y + h < Chunk.CHUNK_HEIGHT) {
+                        for (int k = 0; k < w; k++) {
+                            if (mask[z + k][y + h] != id) {
+                                done = true;
+                                break;
+                            }
+                        }
+                        if (done) {
+                            break;
+                        }
+                        h++;
+                    }
 
-        // to prevent texture bleed and highlighted block outlines
-        float offset = 0.005f;
+                    MeshBuilder b = builders.computeIfAbsent(id, k -> new MeshBuilder());
+                    float xPos = isRight ? x + 1f : x;
 
-        // Calculate the UV boundaries for this specific sprite
-        float u1 = spriteX / TEX_RES + offset;
-        float u2 = (spriteX + 1) / TEX_RES - offset;
+                    b.positions.add(xPos);
+                    b.positions.add((float) y);
+                    b.positions.add((float) z);
+                    b.positions.add(xPos);
+                    b.positions.add((float) y);
+                    b.positions.add((float) z + w);
+                    b.positions.add(xPos);
+                    b.positions.add((float) y + h);
+                    b.positions.add((float) z);
+                    b.positions.add(xPos);
+                    b.positions.add((float) y + h);
+                    b.positions.add((float) z + w);
 
-        // jME's V axis starts at the BOTTOM of the image. 
-        // We invert it so spriteY=0 is the top row of your image file.
-        float v1 = (TEX_RES - spriteY - 1) / TEX_RES + offset;
-        float v2 = (TEX_RES - spriteY) / TEX_RES - offset;
+                    for (int i = 0; i < 4; i++) {
+                        b.normals.add(isRight ? 1f : -1f);
+                        b.normals.add(0f);
+                        b.normals.add(0f);
+                    }
 
-        // V0: Bottom-Left
-        texCoords.add(u1);
-        texCoords.add(v1);
-        // V1: Bottom-Right
-        texCoords.add(u2);
-        texCoords.add(v1);
-        // V2: Top-Left
-        texCoords.add(u1);
-        texCoords.add(v2);
-        // V3: Top-Right
-        texCoords.add(u2);
-        texCoords.add(v2);
+                    b.texCoords.add(0f);
+                    b.texCoords.add(0f);
+                    b.texCoords.add((float) w);
+                    b.texCoords.add(0f);
+                    b.texCoords.add(0f);
+                    b.texCoords.add((float) h);
+                    b.texCoords.add((float) w);
+                    b.texCoords.add((float) h);
+
+                    // Reversing indices for the left side
+                    addIndices(b.indices, b.vertexOffset, !isRight);
+                    b.vertexOffset += 4;
+
+                    for (int i = 0; i < w; i++) {
+                        for (int j = 0; j < h; j++) {
+                            mask[z + i][y + j] = 0;
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    private Mesh buildJmeMesh(List<Float> posList, List<Integer> indexList, List<Float> texCoords, List<Float> normalsList) {
-        // 1. Convert List<Float> to float[]
-        float[] posArray = new float[posList.size()];
-        for (int i = 0; i < posList.size(); i++) {
-            posArray[i] = posList.get(i);
+    private void addIndices(List<Integer> indices, int offset, boolean frontFacing) {
+        if (frontFacing) {
+            indices.add(offset + 0);
+            indices.add(offset + 1);
+            indices.add(offset + 2);
+            indices.add(offset + 1);
+            indices.add(offset + 3);
+            indices.add(offset + 2);
+        } else {
+            indices.add(offset + 2);
+            indices.add(offset + 1);
+            indices.add(offset + 0);
+            indices.add(offset + 2);
+            indices.add(offset + 3);
+            indices.add(offset + 1);
         }
-
-        // 2. Convert List<Integer> to int[]
-        int[] indexArray = new int[indexList.size()];
-        for (int i = 0; i < indexList.size(); i++) {
-            indexArray[i] = indexList.get(i);
-        }
-
-        //convert texture list into an arrayfloat[] texArray = new float[texCoords.size()];
-        float[] texArray = new float[texCoords.size()];
-        for (int i = 0; i < texCoords.size(); i++) {
-            texArray[i] = texCoords.get(i);
-        }
-
-        // calculate the normal array
-        float[] normArray = new float[normalsList.size()];
-        for (int i = 0; i < normalsList.size(); i++) {
-            normArray[i] = normalsList.get(i);
-
-        }
-
-        // 3. Build the jME Mesh
-        Mesh mesh = new Mesh();
-        mesh.setBuffer(VertexBuffer.Type.Position, 3, BufferUtils.createFloatBuffer(posArray));
-        mesh.setBuffer(VertexBuffer.Type.Index, 3, BufferUtils.createIntBuffer(indexArray));
-        mesh.setBuffer(VertexBuffer.Type.TexCoord, 2, BufferUtils.createFloatBuffer(texArray));
-        mesh.setBuffer(VertexBuffer.Type.Normal, 3, BufferUtils.createFloatBuffer(normArray));
-        mesh.updateBound(); // Crucial for jME frustum culling
-
-        return mesh; // Return the mesh to the caller!
     }
 
-    private int addCrossMesh(List<Float> pos, List<Integer> indices, List<Float> tex, List<Float> norms, int x, int y, int z, int currentOffset) {
-        int spriteX = 9;
-        int spriteY = 0;
+    private float[] toFloatArray(List<Float> list) {
+        float[] arr = new float[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            arr[i] = list.get(i);
+        }
+        return arr;
+    }
 
-        // --- PLANE 1 ---
-        pos.add((float) x);
-        pos.add((float) y);
-        pos.add((float) z);     // V0
-        pos.add((float) x + 1);
-        pos.add((float) y);
-        pos.add((float) z + 1); // V1
-        pos.add((float) x);
-        pos.add((float) y + 1);
-        pos.add((float) z);     // V2
-        pos.add((float) x + 1);
-        pos.add((float) y + 1);
-        pos.add((float) z + 1); // V3
-        addTexCoords(tex, spriteX, spriteY);
+    private int[] toIntArray(List<Integer> list) {
+        int[] arr = new int[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            arr[i] = list.get(i);
+        }
+        return arr;
+    }
+
+    private byte getFaceTexture(byte originalBlockId, String faceType) {
+        // --- GRASS BLOCK LOGIC ---
+        if (originalBlockId == 1) {
+            if (faceType.equals("TOP")) {
+                return 1;    // Grass Top
+            }
+            if (faceType.equals("BOTTOM")) {
+                return 3; // Dirt Bottom
+            }
+            return 2;                                // Grass Side
+        }
+
+        // --- WOOD LOGIC ---
+        if (originalBlockId == 7) {
+            if (faceType.equals("TOP") || faceType.equals("BOTTOM")) {
+                return 8; // Wood Inside
+            }
+            return 7; // Wood Side
+        }
+
+        return originalBlockId;
+    }
+
+    /**
+     * Builds two intersecting diagonal quads for foliage (X shape)
+     */
+    private void buildCrossMesh(MeshBuilder b, int x, int y, int z) {
+        // Quad 1: Bottom-Left to Top-Right diagonal (/)
+        addCrossQuad(b, x, y, z, x + 1, y, z + 1, x, y + 1, z, x + 1, y + 1, z + 1);
+        // Quad 1 Backwards (So you can see it from behind)
+        addCrossQuad(b, x + 1, y, z + 1, x, y, z, x + 1, y + 1, z + 1, x, y + 1, z);
+
+        // Quad 2: Bottom-Right to Top-Left diagonal (\)
+        addCrossQuad(b, x + 1, y, z, x, y, z + 1, x + 1, y + 1, z, x, y + 1, z + 1);
+        // Quad 2 Backwards
+        addCrossQuad(b, x, y, z + 1, x + 1, y, z, x, y + 1, z + 1, x + 1, y + 1, z);
+    }
+
+    private void addCrossQuad(MeshBuilder b, float x0, float y0, float z0,
+            float x1, float y1, float z1,
+            float x2, float y2, float z2,
+            float x3, float y3, float z3) {
+        // Vertices
+        b.positions.add(x0);
+        b.positions.add(y0);
+        b.positions.add(z0); // V0: Bottom-Left
+        b.positions.add(x1);
+        b.positions.add(y1);
+        b.positions.add(z1); // V1: Bottom-Right
+        b.positions.add(x2);
+        b.positions.add(y2);
+        b.positions.add(z2); // V2: Top-Left
+        b.positions.add(x3);
+        b.positions.add(y3);
+        b.positions.add(z3); // V3: Top-Right
+
+        // Point normals straight up so the lighting perfectly matches the grass block underneath it!
         for (int i = 0; i < 4; i++) {
-            norms.add(0f);
-            norms.add(1f);
-            norms.add(0f);
+            b.normals.add(0f);
+            b.normals.add(1f);
+            b.normals.add(0f);
         }
 
-        // Front Face Triangle Indices
-        indices.add(currentOffset + 0);
-        indices.add(currentOffset + 1);
-        indices.add(currentOffset + 2);
-        indices.add(currentOffset + 1);
-        indices.add(currentOffset + 3);
-        indices.add(currentOffset + 2);
-        // Back Face Triangle Indices (Reversed Order)
-        indices.add(currentOffset + 2);
-        indices.add(currentOffset + 1);
-        indices.add(currentOffset + 0);
-        indices.add(currentOffset + 2);
-        indices.add(currentOffset + 3);
-        indices.add(currentOffset + 1);
-        currentOffset += 4;
+        // UV Mapping (Full image)
+        b.texCoords.add(0f);
+        b.texCoords.add(0f);
+        b.texCoords.add(1f);
+        b.texCoords.add(0f);
+        b.texCoords.add(0f);
+        b.texCoords.add(1f);
+        b.texCoords.add(1f);
+        b.texCoords.add(1f);
 
-        // --- PLANE 2 ---
-        pos.add((float) x + 1);
-        pos.add((float) y);
-        pos.add((float) z);     // V0
-        pos.add((float) x);
-        pos.add((float) y);
-        pos.add((float) z + 1); // V1
-        pos.add((float) x + 1);
-        pos.add((float) y + 1);
-        pos.add((float) z);     // V2
-        pos.add((float) x);
-        pos.add((float) y + 1);
-        pos.add((float) z + 1); // V3
-        addTexCoords(tex, spriteX, spriteY);
-        for (int i = 0; i < 4; i++) {
-            norms.add(0f);
-            norms.add(1f);
-            norms.add(0f);
-        }
-
-        // Front Face Triangle Indices
-        indices.add(currentOffset + 0);
-        indices.add(currentOffset + 1);
-        indices.add(currentOffset + 2);
-        indices.add(currentOffset + 1);
-        indices.add(currentOffset + 3);
-        indices.add(currentOffset + 2);
-        // Back Face Triangle Indices (Reversed Order)
-        indices.add(currentOffset + 2);
-        indices.add(currentOffset + 1);
-        indices.add(currentOffset + 0);
-        indices.add(currentOffset + 2);
-        indices.add(currentOffset + 3);
-        indices.add(currentOffset + 1);
-        currentOffset += 4;
-
-        return currentOffset;
-    }
-
-    // --- TRIANGLE INDICES ---
-    private void addIndices(List<Integer> indices, int offset) {
-        // Triangle 1
-        indices.add(offset + 0);
-        indices.add(offset + 1);
-        indices.add(offset + 2);
-        // Triangle 2
-        indices.add(offset + 1);
-        indices.add(offset + 3);
-        indices.add(offset + 2);
-    }
-
-    // --- (+Y) TOP FACE ---
-    private void addTopFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
-        pos.add((float) x);
-        pos.add((float) y + 1);
-        pos.add((float) z + 1); // V0: Bottom-Left (from top view)
-        pos.add((float) x + 1);
-        pos.add((float) y + 1);
-        pos.add((float) z + 1); // V1: Bottom-Right
-        pos.add((float) x);
-        pos.add((float) y + 1);
-        pos.add((float) z);     // V2: Top-Left
-        pos.add((float) x + 1);
-        pos.add((float) y + 1);
-        pos.add((float) z);     // V3: Top-Right
-
-        for (int i = 0; i < 4; i++) {
-            norms.add(0f);
-            norms.add(1f);
-            norms.add(0f);
-        }
-    }
-
-    // --- (-Y) BOTTOM FACE ---
-    private void addBottomFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
-        pos.add((float) x);
-        pos.add((float) y);
-        pos.add((float) z);     // V0: Bottom-Left (from bottom view)
-        pos.add((float) x + 1);
-        pos.add((float) y);
-        pos.add((float) z);     // V1: Bottom-Right
-        pos.add((float) x);
-        pos.add((float) y);
-        pos.add((float) z + 1); // V2: Top-Left
-        pos.add((float) x + 1);
-        pos.add((float) y);
-        pos.add((float) z + 1); // V3: Top-Right
-
-        for (int i = 0; i < 4; i++) {
-            norms.add(0f);
-            norms.add(-1f);
-            norms.add(0f);
-        }
-    }
-
-    // --- (+Z) FRONT FACE ---
-    private void addFrontFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
-        pos.add((float) x);
-        pos.add((float) y);
-        pos.add((float) z + 1); // V0
-        pos.add((float) x + 1);
-        pos.add((float) y);
-        pos.add((float) z + 1); // V1
-        pos.add((float) x);
-        pos.add((float) y + 1);
-        pos.add((float) z + 1); // V2
-        pos.add((float) x + 1);
-        pos.add((float) y + 1);
-        pos.add((float) z + 1); // V3
-
-        for (int i = 0; i < 4; i++) {
-            norms.add(0f);
-            norms.add(0f);
-            norms.add(1f);
-        }
-    }
-
-    // --- (-Z) BACK FACE ---
-    private void addBackFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
-        pos.add((float) x + 1);
-        pos.add((float) y);
-        pos.add((float) z); // V0
-        pos.add((float) x);
-        pos.add((float) y);
-        pos.add((float) z); // V1
-        pos.add((float) x + 1);
-        pos.add((float) y + 1);
-        pos.add((float) z); // V2
-        pos.add((float) x);
-        pos.add((float) y + 1);
-        pos.add((float) z); // V3
-
-        for (int i = 0; i < 4; i++) {
-            norms.add(0f);
-            norms.add(0f);
-            norms.add(-1f);
-        }
-    }
-
-    // --- (+X) RIGHT FACE ---
-    private void addRightFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
-        pos.add((float) x + 1);
-        pos.add((float) y);
-        pos.add((float) z + 1); // V0
-        pos.add((float) x + 1);
-        pos.add((float) y);
-        pos.add((float) z);     // V1
-        pos.add((float) x + 1);
-        pos.add((float) y + 1);
-        pos.add((float) z + 1); // V2
-        pos.add((float) x + 1);
-        pos.add((float) y + 1);
-        pos.add((float) z);     // V3
-
-        for (int i = 0; i < 4; i++) {
-            norms.add(1f);
-            norms.add(0f);
-            norms.add(0f);
-        }
-    }
-
-    // --- (-X) LEFT FACE ---
-    private void addLeftFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z
-    ) {
-        pos.add((float) x);
-        pos.add((float) y);
-        pos.add((float) z);     // V0
-        pos.add((float) x);
-        pos.add((float) y);
-        pos.add((float) z + 1); // V1
-        pos.add((float) x);
-        pos.add((float) y + 1);
-        pos.add((float) z);     // V2
-        pos.add((float) x);
-        pos.add((float) y + 1);
-        pos.add((float) z + 1); // V3
-
-        for (int i = 0; i < 4; i++) {
-            norms.add(-1f);
-            norms.add(0f);
-            norms.add(0f);
-        }
-    }
-
-    // Returns true if the block is Air, Water, Leaves, or Tall Grass
-    private boolean isTransparent(byte blockId) {
-        return blockId == 0 || blockId == 4 || blockId == 7 || blockId == 8;
+        // Triangles
+        int off = b.vertexOffset;
+        b.indices.add(off + 0);
+        b.indices.add(off + 1);
+        b.indices.add(off + 2);
+        b.indices.add(off + 1);
+        b.indices.add(off + 3);
+        b.indices.add(off + 2);
+        b.vertexOffset += 4;
     }
 }

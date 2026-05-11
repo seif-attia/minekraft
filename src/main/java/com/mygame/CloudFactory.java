@@ -39,14 +39,13 @@ public class CloudFactory {
 
         Material cloudMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         cloudMat.setBoolean("UseMaterialColors", true);
-        cloudMat.setColor("Ambient", new ColorRGBA(1f, 1f, 1f, 0.85f));
-        cloudMat.setColor("Diffuse", new ColorRGBA(1f, 1f, 1f, 0.85f));
+        cloudMat.setColor("Ambient", new ColorRGBA(0.9f, 0.9f, 0.9f, 1.0f));
+        cloudMat.setColor("Diffuse", new ColorRGBA(0.9f, 0.9f, 0.9f, 1.0f));
 
-        cloudMat.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
+        cloudMat.setFloat("AlphaDiscardThreshold", 0.1f);
         batchedClouds.setQueueBucket(RenderQueue.Bucket.Transparent);
         batchedClouds.setShadowMode(RenderQueue.ShadowMode.Cast);
         batchedClouds.setMaterial(cloudMat);
-
         batchedClouds.setCullHint(CullHint.Never);
         return batchedClouds;
     }

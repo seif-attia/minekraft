@@ -66,11 +66,10 @@ public class MenuState extends BaseAppState {
 
         // 3. Button: Start Game (Initializes GameState)
         Button WorldsBtn = myWindow.addChild(new Button("Worlds"));
-        WorldsBtn.addClickCommands(new Command<Button>() {
-            @Override
-            public void execute(Button source) {
-                startGame();
-            }
+        WorldsBtn.addClickCommands(source -> {
+            // Detach main menu, attach the worlds menu
+            getStateManager().detach(this);
+            getStateManager().attach(new WorldsState());
         });
        
         // 4. Button: Settings (Placeholder)

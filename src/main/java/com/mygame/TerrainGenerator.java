@@ -52,37 +52,37 @@ public class TerrainGenerator {
 
                         // --- SURFACE LAYER ---
                         if (isSteep) {
-                            chunk.setBlock(localX, y, localZ, (byte) 3); // STONE cliffs
+                            chunk.setBlock(localX, y, localZ, (byte) 4); // STONE cliffs
                         } else if (columnHeight > dynamicSnowLine) {
-                            chunk.setBlock(localX, y, localZ, (byte) 5); // SNOW at peaks
+                            chunk.setBlock(localX, y, localZ, (byte) 6); // SNOW at peaks
                         } else if (columnHeight > dynamicTreeLine) {
-                            chunk.setBlock(localX, y, localZ, (byte) 3); // STONE below snow
+                            chunk.setBlock(localX, y, localZ, (byte) 4); // STONE below snow
                         } else if (columnHeight <= SEA_LEVEL + 1) {
-                            chunk.setBlock(localX, y, localZ, (byte) 1); // DIRT/SAND Beach
+                            chunk.setBlock(localX, y, localZ, (byte) 3); // DIRT/SAND Beach
                         } else {
-                            chunk.setBlock(localX, y, localZ, (byte) 2); // GRASS
+                            chunk.setBlock(localX, y, localZ, (byte) 1); // GRASS
                         }
 
                     } else if (y > columnHeight - 4 && y < columnHeight) {
 
                         // --- SUB-SURFACE ---
                         if (columnHeight > dynamicSnowLine) {
-                            chunk.setBlock(localX, y, localZ, (byte) 5); // A couple layers of snow
+                            chunk.setBlock(localX, y, localZ, (byte) 6); // A couple layers of snow
                         } else if (columnHeight > dynamicTreeLine || isSteep) {
-                            chunk.setBlock(localX, y, localZ, (byte) 3); // Solid stone
+                            chunk.setBlock(localX, y, localZ, (byte) 4); // Solid stone
                         } else {
-                            chunk.setBlock(localX, y, localZ, (byte) 1); // Dirt under grass
+                            chunk.setBlock(localX, y, localZ, (byte) 3); // Dirt under grass
                         }
 
                     } else if (y <= columnHeight - 4) {
                         chunk.setBlock(localX, y, localZ, (byte) 3); // Deep stone
                     } else if (y > columnHeight && y <= SEA_LEVEL) {
-                        chunk.setBlock(localX, y, localZ, (byte) 4); // WATER
+                        chunk.setBlock(localX, y, localZ, (byte) 5); // WATER
                     }
                 }
 
                 // Spawn Foliage
-                if (chunk.getBlock(localX, columnHeight, localZ) == 2) {
+                if (chunk.getBlock(localX, columnHeight, localZ) == 1) {
 
                     double randomSeed = Math.random();
 
@@ -92,7 +92,7 @@ public class TerrainGenerator {
                     } // Tall grass
                     else if (randomSeed < 0.05) {
                         if (chunk.getBlock(localX, columnHeight + 1, localZ) == 0) {
-                            chunk.setBlock(localX, columnHeight + 1, localZ, (byte) 8);
+                            chunk.setBlock(localX, columnHeight + 1, localZ, (byte) 10);
                         }
                     }
                 }

@@ -27,7 +27,7 @@ import java.util.Queue;
  */
 public class WorldManager {
 
-    private int renderDistance = 8; // Loads a grid of chunks around the player, so its nxn + 1
+    private int renderDistance = 15; // Loads a grid of chunks around the player, so its nxn + 1
 
     private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
     private Map<ChunkPos, Geometry> activeGeometries = new HashMap<>();

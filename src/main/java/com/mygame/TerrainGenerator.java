@@ -23,12 +23,20 @@ public class TerrainGenerator {
                 int globalZ = (chunkZ * Chunk.CHUNK_SIZE) + localZ;
 
                 int columnHeight = generateHeight(globalX, globalZ);
-
                 int heightRight = generateHeight(globalX + 1, globalZ);
                 int heightForward = generateHeight(globalX, globalZ + 1);
 
-                // If it drops 3 blocks instantly, it's a rocky cliff
                 boolean isSteep = Math.abs(columnHeight - heightRight) >= 3 || Math.abs(columnHeight - heightForward) >= 3;
+
+                // --- NEW: ORGANIC GRADIENT JITTER ---
+                // We sample noise to create a "temperature" map that shifts the transition lines
+                double temperatureNoise = noise(globalX * 0.05, globalZ * 0.05);
+
+                // The snow line weaves randomly between Y=125 and Y=155
+                int dynamicSnowLine = 140 + (int) (temperatureNoise * 15);
+
+                // The grass/stone line weaves randomly between Y=105 and Y=125
+                int dynamicTreeLine = 115 + (int) (temperatureNoise * 10);
 
                 int renderLimit = Math.max(columnHeight, SEA_LEVEL);
                 if (renderLimit >= Chunk.CHUNK_HEIGHT) {
@@ -39,20 +47,25 @@ public class TerrainGenerator {
                     if (y == columnHeight) {
 
                         // --- SURFACE LAYER ---
-                        if (columnHeight > 115 || isSteep) {
-                            chunk.setBlock(localX, y, localZ, (byte) 3); // STONE Peaks/Cliffs
+                        if (isSteep) {
+                            chunk.setBlock(localX, y, localZ, (byte) 3); // STONE cliffs
+                        } else if (columnHeight > dynamicSnowLine) {
+                            chunk.setBlock(localX, y, localZ, (byte) 5); // SNOW at peaks
+                        } else if (columnHeight > dynamicTreeLine) {
+                            chunk.setBlock(localX, y, localZ, (byte) 3); // STONE below snow
                         } else if (columnHeight <= SEA_LEVEL + 1) {
-                            // Only place dirt if the surface is literally at the water's edge
-                            chunk.setBlock(localX, y, localZ, (byte) 1);
+                            chunk.setBlock(localX, y, localZ, (byte) 1); // DIRT/SAND Beach
                         } else {
-                            chunk.setBlock(localX, y, localZ, (byte) 2); // GRASS everywhere else
+                            chunk.setBlock(localX, y, localZ, (byte) 2); // GRASS
                         }
 
                     } else if (y > columnHeight - 4 && y < columnHeight) {
 
                         // --- SUB-SURFACE ---
-                        if (columnHeight > 115 || isSteep) {
-                            chunk.setBlock(localX, y, localZ, (byte) 3); // Solid stone under peaks
+                        if (columnHeight > dynamicSnowLine) {
+                            chunk.setBlock(localX, y, localZ, (byte) 5); // A couple layers of snow
+                        } else if (columnHeight > dynamicTreeLine || isSteep) {
+                            chunk.setBlock(localX, y, localZ, (byte) 3); // Solid stone
                         } else {
                             chunk.setBlock(localX, y, localZ, (byte) 1); // Dirt under grass
                         }

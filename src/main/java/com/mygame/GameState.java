@@ -79,14 +79,10 @@ public class GameState extends BaseAppState {
         // 2. THE SHADOW FILTER
         DirectionalLightShadowFilter dlsf = new DirectionalLightShadowFilter(assetManager, 2048, 3);
         dlsf.setLight(sun);
-        dlsf.setShadowIntensity(0.3f);
-        dlsf.setEdgeFilteringMode(EdgeFilteringMode.PCFPOISSON);
-        dlsf.setShadowZExtend(150f);
-        dlsf.setLambda(0.55f);
-
-        // This keeps the shadows from bleeding through the hollow insides of the terrain
-        //dlsf.setRenderBackFacesShadows(false);
-        // CRITICAL: Add shadows to the pipeline FIRST
+        dlsf.setShadowIntensity(0.35f);
+        dlsf.setEdgeFilteringMode(EdgeFilteringMode.PCF4);
+        dlsf.setShadowZExtend(250f);
+        dlsf.setEdgesThickness(10);
         fpp.addFilter(dlsf);
 
         // 3. THE FOG FILTER
@@ -95,7 +91,6 @@ public class GameState extends BaseAppState {
         fog.setFogDistance(150);
         fog.setFogDensity(1f);
 
-        // CRITICAL: Add fog SECOND, so it successfully hides the distant shadows
         fpp.addFilter(fog);
 
         // 4. ATTACH TO VIEWPORT
@@ -116,6 +111,7 @@ public class GameState extends BaseAppState {
 
         // init clouds
         cloudLayer = CloudFactory.createClouds(assetManager);
+        cloudLayer.setCullHint(com.jme3.scene.Spatial.CullHint.Never);
         rootNode.attachChild(cloudLayer);
 
     }

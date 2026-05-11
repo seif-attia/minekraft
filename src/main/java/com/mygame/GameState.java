@@ -4,6 +4,9 @@ import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.asset.AssetManager;
+import com.jme3.effect.ParticleEmitter;
+import com.jme3.effect.ParticleMesh;
+import com.jme3.effect.shapes.EmitterBoxShape;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.material.Material;
@@ -15,6 +18,7 @@ import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.post.filters.FogFilter;
+import com.jme3.post.filters.LightScatteringFilter;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
@@ -42,6 +46,11 @@ public class GameState extends BaseAppState {
     private Spatial cloudLayer;
     private float cloudTimer = 0;
 
+    // Dust and god rays
+    private ParticleEmitter ambientDust;
+    private LightScatteringFilter godRays;
+    private DirectionalLight sun;
+
     @Override
     protected void initialize(Application app) {
         // Cast to SimpleApplication to access rootNode, assetManager, etc.
@@ -68,11 +77,26 @@ public class GameState extends BaseAppState {
         rootNode.addLight(al);
 
         // THE SUN (Directional Light)
-        DirectionalLight sun = new DirectionalLight();
+        sun = new DirectionalLight();
         sun.setColor(ColorRGBA.White.mult(1.2f)); // Slightly brighter than white
         // Pointing down and slightly to the side to cast cool angled shadows
         sun.setDirection(new Vector3f(-0.8f, -1.2f, -0.3f).normalizeLocal());
         rootNode.addLight(sun);
+
+        // Setup sun object
+        Sphere sunBox = new Sphere(32, 32, 30f);
+        sunGeom = new Geometry("Sun", sunBox);
+        Material sunMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        sunMat.setColor("Color", new ColorRGBA(4.0f, 3.8f, 2.5f, 1.0f)); // Warm yellow/white
+        sunGeom.setMaterial(sunMat);
+
+        sunGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Off);
+
+        rootNode.attachChild(sunGeom);
+
+        float sunDistance = 800f;
+        Vector3f sunOrigin = sun.getDirection().mult(-sunDistance);
+        sunGeom.setLocalTranslation(sunOrigin);
 
         FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
 
@@ -85,6 +109,16 @@ public class GameState extends BaseAppState {
         dlsf.setEdgesThickness(10);
         fpp.addFilter(dlsf);
 
+        // 2. Create the God Rays filter
+        LightScatteringFilter lsf = new LightScatteringFilter(sunOrigin);
+        lsf.setLightDensity(1.4f); // Thick, heavy rays
+        lsf.setBlurWidth(0.8f);
+        fpp.addFilter(lsf);
+
+        // Save this to a global variable so we can move it later!
+        this.godRays = lsf;
+
+        ////////////////////////////////////////////////
         // 3. THE FOG FILTER
         FogFilter fog = new FogFilter();
         fog.setFogColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
@@ -98,22 +132,45 @@ public class GameState extends BaseAppState {
 
         viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
 
-        // Setup sun object
-        Sphere sunBox = new Sphere(5, 10, 10);
-        sunGeom = new Geometry("Sun", sunBox);
-        Material sunMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        sunMat.setColor("Color", new ColorRGBA(1.0f, 0.9f, 0.6f, 1.0f)); // Warm yellow/white
-        sunGeom.setMaterial(sunMat);
-
-        sunGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Off);
-
-        rootNode.attachChild(sunGeom);
-
         // init clouds
         cloudLayer = CloudFactory.createClouds(assetManager);
         cloudLayer.setCullHint(com.jme3.scene.Spatial.CullHint.Never);
         rootNode.attachChild(cloudLayer);
 
+        // dust particles
+        // 1. Create the Emitter (Allows up to 400 dust motes on screen at once)
+        ParticleEmitter dust = new ParticleEmitter("AmbientDust", ParticleMesh.Type.Triangle, 800);
+
+        // 2. Set the Material
+        Material dustMat = new Material(assetManager, "Common/MatDefs/Misc/Particle.j3md");
+        dustMat.setTexture("Texture", assetManager.loadTexture("Textures/dust.png"));
+        dust.setMaterial(dustMat);
+
+        // 3. Make them spawn in a massive 30x30x30 box
+        dust.setShape(new EmitterBoxShape(new Vector3f(-15f, -15f, -15f), new Vector3f(15f, 15f, 15f)));
+        dust.setImagesX(1);
+        dust.setImagesY(1);
+
+        // 4. The Physics of Dust
+        dust.setGravity(0, -0.05f, 0); // Barely any gravity, so they float
+        dust.setLowLife(4f);  // Dust lives for at least 4 seconds
+        dust.setHighLife(8f); // Dust lives for up to 8 seconds
+
+        // Give them a tiny bit of random drifting speed
+        dust.getParticleInfluencer().setInitialVelocity(new Vector3f(0, 0.2f, 0));
+        dust.getParticleInfluencer().setVelocityVariation(1f);
+
+        // Make them tiny, and fade them out smoothly before they die
+        dust.setStartSize(0.12f);
+        dust.setEndSize(0.06f);
+        dust.setStartColor(new ColorRGBA(1f, 1f, 1f, 0.8f)); // 40% transparent white
+        dust.setEndColor(new ColorRGBA(1f, 1f, 1f, 0f));     // Fades to invisible
+
+        // 5. Attach to the world
+        rootNode.attachChild(dust);
+
+        // Note: We have to make this a global variable so the update loop can see it!
+        this.ambientDust = dust;
     }
 
     @Override
@@ -127,9 +184,23 @@ public class GameState extends BaseAppState {
             minimap.update(cam.getLocation());
         }
 
+        if (ambientDust != null) {
+            ambientDust.setLocalTranslation(cam.getLocation());
+        }
+
         // Make the Sun follow the player
-        Vector3f sunPosition = lightDir.mult(-300f).add(cam.getLocation());
-        sunGeom.setLocalTranslation(sunPosition);
+        if (sunGeom != null && godRays != null) {
+            float sunDistance = 800f;
+
+            // Camera Position + (Reversed Light Direction * Distance)
+            Vector3f newSunPos = cam.getLocation().add(sun.getDirection().mult(-sunDistance));
+
+            // Move the glowing sphere
+            sunGeom.setLocalTranslation(newSunPos);
+
+            // Move the God Rays origin so they follow the sphere perfectly
+            godRays.setLightPosition(newSunPos);
+        }
 
         // Cloud moving / drifting logic
         cloudTimer += tpf * 0.5f;

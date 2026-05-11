@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.Set;
 import com.jme3.app.Application;
 import com.jme3.asset.TextureKey;
+import com.jme3.material.RenderState.FaceCullMode;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -81,6 +82,9 @@ public class WorldManager {
         //masterMaterial.getAdditionalRenderState().setWireframe(true);
 
         tex.setAnisotropicFilter(8);
+        masterMaterial.setFloat("AlphaDiscardThreshold", 0.5f);
+        // force engine to draw both sides of cross mesh / tall grass mesh
+        masterMaterial.getAdditionalRenderState().setFaceCullMode(FaceCullMode.Off);
 
         masterMaterial.setTexture("ColorMap", tex);
     }

@@ -12,6 +12,10 @@ public class TerrainGenerator {
 
     public static final int SEA_LEVEL = 64;
 
+    // world seed
+    private static final int SEED_OFFSET_X = new java.util.Random().nextInt(1000000);
+    private static final int SEED_OFFSET_Z = new java.util.Random().nextInt(1000000);
+
     /**
      * Fills an empty Chunk with terrain data based on global coordinates.
      */
@@ -19,8 +23,8 @@ public class TerrainGenerator {
         for (int localX = 0; localX < Chunk.CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < Chunk.CHUNK_SIZE; localZ++) {
 
-                int globalX = (chunkX * Chunk.CHUNK_SIZE) + localX;
-                int globalZ = (chunkZ * Chunk.CHUNK_SIZE) + localZ;
+                int globalX = (chunkX * Chunk.CHUNK_SIZE) + localX + SEED_OFFSET_X;
+                int globalZ = (chunkZ * Chunk.CHUNK_SIZE) + localZ + SEED_OFFSET_Z;
 
                 int columnHeight = generateHeight(globalX, globalZ);
                 int heightRight = generateHeight(globalX + 1, globalZ);
@@ -74,6 +78,22 @@ public class TerrainGenerator {
                         chunk.setBlock(localX, y, localZ, (byte) 3); // Deep stone
                     } else if (y > columnHeight && y <= SEA_LEVEL) {
                         chunk.setBlock(localX, y, localZ, (byte) 4); // WATER
+                    }
+                }
+
+                // Spawn Foliage
+                if (chunk.getBlock(localX, columnHeight, localZ) == 2) {
+
+                    double randomSeed = Math.random();
+
+                    // Trees
+                    if (randomSeed < 0.005) {
+                        StructureGenerator.buildOakTree(chunk, localX, columnHeight, localZ);
+                    } // Tall grass
+                    else if (randomSeed < 0.05) {
+                        if (chunk.getBlock(localX, columnHeight + 1, localZ) == 0) {
+                            chunk.setBlock(localX, columnHeight + 1, localZ, (byte) 8);
+                        }
                     }
                 }
             }

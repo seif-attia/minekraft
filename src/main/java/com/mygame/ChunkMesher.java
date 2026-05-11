@@ -38,10 +38,15 @@ public class ChunkMesher {
                     int globalX = (chunkX * Chunk.CHUNK_SIZE) + localX;
                     int globalZ = (chunkZ * Chunk.CHUNK_SIZE) + localZ;
 
+                    if (blockId == 8) {
+                        vertexOffset = addCrossMesh(positions, indices, texCoords, localX, y, localZ, vertexOffset);
+                        continue;
+                    }
+
                     // --- FACE CULLING ---
                     // Top Face Check (+Y)
                     // checking blocks at global coords relative to all neighboring chunks
-                    if (world.getBlockGlobal(globalX, y + 1, globalZ) == 0) {
+                    if (isTransparent(world.getBlockGlobal(globalX, y + 1, globalZ))) {
                         // keep draw coords local to the chunk itself
                         addTopFaceVertices(positions, localX, y, localZ);
                         //add textures
@@ -51,7 +56,7 @@ public class ChunkMesher {
                         vertexOffset += 4;
                     }
                     // Bottom Face Check (-Y)
-                    if (world.getBlockGlobal(globalX, y - 1, globalZ) == 0) {
+                    if (isTransparent(world.getBlockGlobal(globalX, y - 1, globalZ))) {
                         addBottomFaceVertices(positions, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "BOTTOM");
@@ -59,7 +64,7 @@ public class ChunkMesher {
                         vertexOffset += 4;
                     }
                     // Front Face Check (+Z)
-                    if (world.getBlockGlobal(globalX, y, globalZ + 1) == 0) {
+                    if (isTransparent(world.getBlockGlobal(globalX, y, globalZ + 1))) {
                         addFrontFaceVertices(positions, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "FRONT");
@@ -67,7 +72,7 @@ public class ChunkMesher {
                         vertexOffset += 4;
                     }
                     // Back Face Check (-Z)
-                    if (world.getBlockGlobal(globalX, y, globalZ - 1) == 0) {
+                    if (isTransparent(world.getBlockGlobal(globalX, y, globalZ - 1))) {
                         addBackFaceVertices(positions, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "BACK");
@@ -75,7 +80,7 @@ public class ChunkMesher {
                         vertexOffset += 4;
                     }
                     // Right Face Check (+X)
-                    if (world.getBlockGlobal(globalX + 1, y, globalZ) == 0) {
+                    if (isTransparent(world.getBlockGlobal(globalX + 1, y, globalZ))) {
                         addRightFaceVertices(positions, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "RIGHT");
@@ -83,7 +88,7 @@ public class ChunkMesher {
                         vertexOffset += 4;
                     }
                     // Left Face Check (-X)
-                    if (world.getBlockGlobal(globalX - 1, y, globalZ) == 0) {
+                    if (isTransparent(world.getBlockGlobal(globalX - 1, y, globalZ))) {
                         addLeftFaceVertices(positions, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "LEFT");
@@ -133,8 +138,25 @@ public class ChunkMesher {
                 spriteX = 4;
                 spriteY = 0;
                 break;
-            case 5:
+            case 5: // snow
                 spriteX = 5;
+                spriteY = 0;
+                break;
+            case 6: // Oak wood
+                if (faceDirection.equals("TOP") || faceDirection.equals("BOTTOM")) {
+                    spriteX = 7;
+                    spriteY = 0;
+                } else {
+                    spriteX = 6;
+                    spriteY = 0;
+                }
+                break;
+            case 7: // leaves
+                spriteX = 8;
+                spriteY = 0;
+                break;
+            case 8: // tall grass
+                spriteX = 9;
                 spriteY = 0;
                 break;
         }
@@ -198,6 +220,48 @@ public class ChunkMesher {
         mesh.updateBound(); // Crucial for jME frustum culling
 
         return mesh; // Return the mesh to the caller!
+    }
+
+    private int addCrossMesh(List<Float> pos, List<Integer> indices, List<Float> tex, int x, int y, int z, int currentOffset) {
+        // We use Sprite X=9, Y=0 for Tall Grass
+        int spriteX = 9;
+        int spriteY = 0;
+
+        // Plane 1: Bottom-Left to Top-Right
+        pos.add((float) x);
+        pos.add((float) y);
+        pos.add((float) z);     // V0
+        pos.add((float) x + 1);
+        pos.add((float) y);
+        pos.add((float) z + 1); // V1
+        pos.add((float) x);
+        pos.add((float) y + 1);
+        pos.add((float) z);     // V2
+        pos.add((float) x + 1);
+        pos.add((float) y + 1);
+        pos.add((float) z + 1); // V3
+        addTexCoords(tex, spriteX, spriteY);
+        addIndices(indices, currentOffset);
+        currentOffset += 4;
+
+        // Plane 2: Bottom-Right to Top-Left
+        pos.add((float) x + 1);
+        pos.add((float) y);
+        pos.add((float) z);     // V0
+        pos.add((float) x);
+        pos.add((float) y);
+        pos.add((float) z + 1); // V1
+        pos.add((float) x + 1);
+        pos.add((float) y + 1);
+        pos.add((float) z);     // V2
+        pos.add((float) x);
+        pos.add((float) y + 1);
+        pos.add((float) z + 1); // V3
+        addTexCoords(tex, spriteX, spriteY);
+        addIndices(indices, currentOffset);
+        currentOffset += 4;
+
+        return currentOffset;
     }
 
     // --- TRIANGLE INDICES ---
@@ -306,5 +370,10 @@ public class ChunkMesher {
         pos.add((float) x);
         pos.add((float) y + 1);
         pos.add((float) z + 1); // V3
+    }
+
+    // Returns true if the block is Air, Water, Leaves, or Tall Grass
+    private boolean isTransparent(byte blockId) {
+        return blockId == 0 || blockId == 4 || blockId == 7 || blockId == 8;
     }
 }

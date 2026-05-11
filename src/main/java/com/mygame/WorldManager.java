@@ -30,6 +30,8 @@ import java.util.Queue;
  */
 public class WorldManager {
 
+    private boolean isWireframe = false;
+
     private int renderDistance = 20; // Loads a grid of chunks around the player, so its nxn + 1
 
     private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
@@ -78,8 +80,24 @@ public class WorldManager {
         blockMaterials.put((byte) 3, createRepeatingMaterial("Textures/dirt.png", false));
         // ID 4: STONE
         blockMaterials.put((byte) 4, createRepeatingMaterial("Textures/stone.png", false));
-        // ID 5: WATER (Add transparency)
-        blockMaterials.put((byte) 5, createRepeatingMaterial("Textures/water.png", true));
+        // --- ID 5: WATER ---
+        Material waterMat = createRepeatingMaterial("Textures/water.png", true);
+
+        // Enable custom coloring
+        waterMat.setBoolean("UseMaterialColors", true);
+
+        // The 4th number (0.6f) is the Alpha! Lower it to make water more invisible.
+        // Keeping RGB at 1.0f preserves the original color of your water.png
+        waterMat.setColor("Diffuse", new ColorRGBA(1.0f, 1.0f, 1.0f, 0.6f));
+        waterMat.setColor("Ambient", new ColorRGBA(1.0f, 1.0f, 1.0f, 0.6f));
+
+        // Force smooth glass-like transparency instead of harsh cutouts
+        waterMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+
+        // If your createRepeatingMaterial method adds a discard threshold, we MUST remove it for water!
+        waterMat.clearParam("AlphaDiscardThreshold");
+
+        blockMaterials.put((byte) 5, waterMat);
         // ID 6: snow
         blockMaterials.put((byte) 6, createRepeatingMaterial("Textures/snow.png", false));
         // ID 7: wood sides
@@ -320,7 +338,18 @@ public class WorldManager {
         return worldNode;
     }
 
+    public void toggleWireframe() {
+        isWireframe = !isWireframe; // Flip the state
+
+        // Loop through every material (Grass, Stone, Water, etc.)
+        for (Material mat : blockMaterials.values()) {
+            mat.getAdditionalRenderState().setWireframe(isWireframe);
+        }
+
+        System.out.println("Wireframe Mode: " + (isWireframe ? "ON" : "OFF"));
+    }
     // Destroys thread workers upon application shutdown
+
     public void destroy() {
         executor.shutdownNow();
     }

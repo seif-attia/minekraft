@@ -18,6 +18,8 @@ import java.util.Set;
 import com.jme3.app.Application;
 import com.jme3.asset.TextureKey;
 import com.jme3.material.RenderState.FaceCullMode;
+import com.jme3.math.ColorRGBA;
+import com.jme3.renderer.queue.RenderQueue;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -67,7 +69,7 @@ public class WorldManager {
     }
 
     private void initMaterial() {
-        masterMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        masterMaterial = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
 
         // Create a texture key for the mipmap
         //        TextureKey key = new TextureKey("Textures/atlas.png", false);
@@ -79,14 +81,20 @@ public class WorldManager {
 
         // activate mipmaps for blocks far away
         tex.setMinFilter(Texture.MinFilter.NearestNoMipMaps);
-        //masterMaterial.getAdditionalRenderState().setWireframe(true);
 
+        /**
+         * ENABLE WIREFRAME VIEW
+         */
+        //masterMaterial.getAdditionalRenderState().setWireframe(true);
         tex.setAnisotropicFilter(8);
         masterMaterial.setFloat("AlphaDiscardThreshold", 0.5f);
-        // force engine to draw both sides of cross mesh / tall grass mesh
-        masterMaterial.getAdditionalRenderState().setFaceCullMode(FaceCullMode.Off);
 
-        masterMaterial.setTexture("ColorMap", tex);
+        masterMaterial.setTexture("DiffuseMap", tex);
+
+        // light 
+        masterMaterial.setBoolean("UseMaterialColors", true);
+        masterMaterial.setColor("Ambient", new ColorRGBA(0.4f, 0.4f, 0.4f, 1.0f));
+        masterMaterial.setColor("Diffuse", ColorRGBA.White);
     }
 
     public void update(Vector3f playerLocation) {
@@ -181,6 +189,7 @@ public class WorldManager {
 
                 // Create and attach the Geometry
                 Geometry chunkGeo = new Geometry("Chunk_" + pos.x() + "_" + pos.z(), chunkMesh);
+                chunkGeo.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                 chunkGeo.setMaterial(masterMaterial);
                 chunkGeo.setLocalTranslation(pos.x() * Chunk.CHUNK_SIZE, 0, pos.z() * Chunk.CHUNK_SIZE);
 

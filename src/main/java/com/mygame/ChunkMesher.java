@@ -25,6 +25,7 @@ public class ChunkMesher {
         List<Integer> indices = new ArrayList<>();
         int vertexOffset = 0; // Keeps track of the index for triangles
         List<Float> texCoords = new ArrayList<>();
+        List<Float> normals = new ArrayList<>();
 
         for (int localX = 0; localX < Chunk.CHUNK_SIZE; localX++) {
             for (int y = 0; y < Chunk.CHUNK_HEIGHT; y++) {
@@ -39,7 +40,7 @@ public class ChunkMesher {
                     int globalZ = (chunkZ * Chunk.CHUNK_SIZE) + localZ;
 
                     if (blockId == 8) {
-                        vertexOffset = addCrossMesh(positions, indices, texCoords, localX, y, localZ, vertexOffset);
+                        vertexOffset = addCrossMesh(positions, indices, texCoords, normals, localX, y, localZ, vertexOffset);
                         continue;
                     }
 
@@ -48,7 +49,7 @@ public class ChunkMesher {
                     // checking blocks at global coords relative to all neighboring chunks
                     if (isTransparent(world.getBlockGlobal(globalX, y + 1, globalZ))) {
                         // keep draw coords local to the chunk itself
-                        addTopFaceVertices(positions, localX, y, localZ);
+                        addTopFaceVertices(positions, normals, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "TOP");
 
@@ -57,7 +58,7 @@ public class ChunkMesher {
                     }
                     // Bottom Face Check (-Y)
                     if (isTransparent(world.getBlockGlobal(globalX, y - 1, globalZ))) {
-                        addBottomFaceVertices(positions, localX, y, localZ);
+                        addBottomFaceVertices(positions, normals, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "BOTTOM");
                         addIndices(indices, vertexOffset);
@@ -65,7 +66,7 @@ public class ChunkMesher {
                     }
                     // Front Face Check (+Z)
                     if (isTransparent(world.getBlockGlobal(globalX, y, globalZ + 1))) {
-                        addFrontFaceVertices(positions, localX, y, localZ);
+                        addFrontFaceVertices(positions, normals, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "FRONT");
                         addIndices(indices, vertexOffset);
@@ -73,7 +74,7 @@ public class ChunkMesher {
                     }
                     // Back Face Check (-Z)
                     if (isTransparent(world.getBlockGlobal(globalX, y, globalZ - 1))) {
-                        addBackFaceVertices(positions, localX, y, localZ);
+                        addBackFaceVertices(positions, normals, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "BACK");
                         addIndices(indices, vertexOffset);
@@ -81,7 +82,7 @@ public class ChunkMesher {
                     }
                     // Right Face Check (+X)
                     if (isTransparent(world.getBlockGlobal(globalX + 1, y, globalZ))) {
-                        addRightFaceVertices(positions, localX, y, localZ);
+                        addRightFaceVertices(positions, normals, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "RIGHT");
                         addIndices(indices, vertexOffset);
@@ -89,7 +90,7 @@ public class ChunkMesher {
                     }
                     // Left Face Check (-X)
                     if (isTransparent(world.getBlockGlobal(globalX - 1, y, globalZ))) {
-                        addLeftFaceVertices(positions, localX, y, localZ);
+                        addLeftFaceVertices(positions, normals, localX, y, localZ);
                         //add textures
                         assignTextureForBlock(texCoords, blockId, "LEFT");
                         addIndices(indices, vertexOffset);
@@ -100,7 +101,7 @@ public class ChunkMesher {
         }
 
         // Convert raw lists into a compiled jME Mesh
-        return buildJmeMesh(positions, indices, texCoords);
+        return buildJmeMesh(positions, indices, texCoords, normals);
     }
 
     private void assignTextureForBlock(List<Float> texCoords, byte blockId, String faceDirection) {
@@ -193,7 +194,7 @@ public class ChunkMesher {
         texCoords.add(v2);
     }
 
-    private Mesh buildJmeMesh(List<Float> posList, List<Integer> indexList, List<Float> texCoords) {
+    private Mesh buildJmeMesh(List<Float> posList, List<Integer> indexList, List<Float> texCoords, List<Float> normalsList) {
         // 1. Convert List<Float> to float[]
         float[] posArray = new float[posList.size()];
         for (int i = 0; i < posList.size(); i++) {
@@ -212,22 +213,29 @@ public class ChunkMesher {
             texArray[i] = texCoords.get(i);
         }
 
+        // calculate the normal array
+        float[] normArray = new float[normalsList.size()];
+        for (int i = 0; i < normalsList.size(); i++) {
+            normArray[i] = normalsList.get(i);
+
+        }
+
         // 3. Build the jME Mesh
         Mesh mesh = new Mesh();
         mesh.setBuffer(VertexBuffer.Type.Position, 3, BufferUtils.createFloatBuffer(posArray));
         mesh.setBuffer(VertexBuffer.Type.Index, 3, BufferUtils.createIntBuffer(indexArray));
         mesh.setBuffer(VertexBuffer.Type.TexCoord, 2, BufferUtils.createFloatBuffer(texArray));
+        mesh.setBuffer(VertexBuffer.Type.Normal, 3, BufferUtils.createFloatBuffer(normArray));
         mesh.updateBound(); // Crucial for jME frustum culling
 
         return mesh; // Return the mesh to the caller!
     }
 
-    private int addCrossMesh(List<Float> pos, List<Integer> indices, List<Float> tex, int x, int y, int z, int currentOffset) {
-        // We use Sprite X=9, Y=0 for Tall Grass
+    private int addCrossMesh(List<Float> pos, List<Integer> indices, List<Float> tex, List<Float> norms, int x, int y, int z, int currentOffset) {
         int spriteX = 9;
         int spriteY = 0;
 
-        // Plane 1: Bottom-Left to Top-Right
+        // --- PLANE 1 ---
         pos.add((float) x);
         pos.add((float) y);
         pos.add((float) z);     // V0
@@ -241,10 +249,29 @@ public class ChunkMesher {
         pos.add((float) y + 1);
         pos.add((float) z + 1); // V3
         addTexCoords(tex, spriteX, spriteY);
-        addIndices(indices, currentOffset);
+        for (int i = 0; i < 4; i++) {
+            norms.add(0f);
+            norms.add(1f);
+            norms.add(0f);
+        }
+
+        // Front Face Triangle Indices
+        indices.add(currentOffset + 0);
+        indices.add(currentOffset + 1);
+        indices.add(currentOffset + 2);
+        indices.add(currentOffset + 1);
+        indices.add(currentOffset + 3);
+        indices.add(currentOffset + 2);
+        // Back Face Triangle Indices (Reversed Order)
+        indices.add(currentOffset + 2);
+        indices.add(currentOffset + 1);
+        indices.add(currentOffset + 0);
+        indices.add(currentOffset + 2);
+        indices.add(currentOffset + 3);
+        indices.add(currentOffset + 1);
         currentOffset += 4;
 
-        // Plane 2: Bottom-Right to Top-Left
+        // --- PLANE 2 ---
         pos.add((float) x + 1);
         pos.add((float) y);
         pos.add((float) z);     // V0
@@ -258,7 +285,26 @@ public class ChunkMesher {
         pos.add((float) y + 1);
         pos.add((float) z + 1); // V3
         addTexCoords(tex, spriteX, spriteY);
-        addIndices(indices, currentOffset);
+        for (int i = 0; i < 4; i++) {
+            norms.add(0f);
+            norms.add(1f);
+            norms.add(0f);
+        }
+
+        // Front Face Triangle Indices
+        indices.add(currentOffset + 0);
+        indices.add(currentOffset + 1);
+        indices.add(currentOffset + 2);
+        indices.add(currentOffset + 1);
+        indices.add(currentOffset + 3);
+        indices.add(currentOffset + 2);
+        // Back Face Triangle Indices (Reversed Order)
+        indices.add(currentOffset + 2);
+        indices.add(currentOffset + 1);
+        indices.add(currentOffset + 0);
+        indices.add(currentOffset + 2);
+        indices.add(currentOffset + 3);
+        indices.add(currentOffset + 1);
         currentOffset += 4;
 
         return currentOffset;
@@ -277,7 +323,7 @@ public class ChunkMesher {
     }
 
     // --- (+Y) TOP FACE ---
-    private void addTopFaceVertices(List<Float> pos, int x, int y, int z) {
+    private void addTopFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
         pos.add((float) x);
         pos.add((float) y + 1);
         pos.add((float) z + 1); // V0: Bottom-Left (from top view)
@@ -290,10 +336,16 @@ public class ChunkMesher {
         pos.add((float) x + 1);
         pos.add((float) y + 1);
         pos.add((float) z);     // V3: Top-Right
+
+        for (int i = 0; i < 4; i++) {
+            norms.add(0f);
+            norms.add(1f);
+            norms.add(0f);
+        }
     }
 
     // --- (-Y) BOTTOM FACE ---
-    private void addBottomFaceVertices(List<Float> pos, int x, int y, int z) {
+    private void addBottomFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
         pos.add((float) x);
         pos.add((float) y);
         pos.add((float) z);     // V0: Bottom-Left (from bottom view)
@@ -306,10 +358,16 @@ public class ChunkMesher {
         pos.add((float) x + 1);
         pos.add((float) y);
         pos.add((float) z + 1); // V3: Top-Right
+
+        for (int i = 0; i < 4; i++) {
+            norms.add(0f);
+            norms.add(-1f);
+            norms.add(0f);
+        }
     }
 
     // --- (+Z) FRONT FACE ---
-    private void addFrontFaceVertices(List<Float> pos, int x, int y, int z) {
+    private void addFrontFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
         pos.add((float) x);
         pos.add((float) y);
         pos.add((float) z + 1); // V0
@@ -322,10 +380,16 @@ public class ChunkMesher {
         pos.add((float) x + 1);
         pos.add((float) y + 1);
         pos.add((float) z + 1); // V3
+
+        for (int i = 0; i < 4; i++) {
+            norms.add(0f);
+            norms.add(0f);
+            norms.add(1f);
+        }
     }
 
     // --- (-Z) BACK FACE ---
-    private void addBackFaceVertices(List<Float> pos, int x, int y, int z) {
+    private void addBackFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
         pos.add((float) x + 1);
         pos.add((float) y);
         pos.add((float) z); // V0
@@ -338,10 +402,16 @@ public class ChunkMesher {
         pos.add((float) x);
         pos.add((float) y + 1);
         pos.add((float) z); // V3
+
+        for (int i = 0; i < 4; i++) {
+            norms.add(0f);
+            norms.add(0f);
+            norms.add(-1f);
+        }
     }
 
     // --- (+X) RIGHT FACE ---
-    private void addRightFaceVertices(List<Float> pos, int x, int y, int z) {
+    private void addRightFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z) {
         pos.add((float) x + 1);
         pos.add((float) y);
         pos.add((float) z + 1); // V0
@@ -354,10 +424,17 @@ public class ChunkMesher {
         pos.add((float) x + 1);
         pos.add((float) y + 1);
         pos.add((float) z);     // V3
+
+        for (int i = 0; i < 4; i++) {
+            norms.add(1f);
+            norms.add(0f);
+            norms.add(0f);
+        }
     }
 
     // --- (-X) LEFT FACE ---
-    private void addLeftFaceVertices(List<Float> pos, int x, int y, int z) {
+    private void addLeftFaceVertices(List<Float> pos, List<Float> norms, int x, int y, int z
+    ) {
         pos.add((float) x);
         pos.add((float) y);
         pos.add((float) z);     // V0
@@ -370,6 +447,12 @@ public class ChunkMesher {
         pos.add((float) x);
         pos.add((float) y + 1);
         pos.add((float) z + 1); // V3
+
+        for (int i = 0; i < 4; i++) {
+            norms.add(-1f);
+            norms.add(0f);
+            norms.add(0f);
+        }
     }
 
     // Returns true if the block is Air, Water, Leaves, or Tall Grass

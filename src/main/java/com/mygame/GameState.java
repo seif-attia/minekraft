@@ -4,6 +4,9 @@ import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
 import com.jme3.asset.AssetManager;
+import com.jme3.light.AmbientLight;
+import com.jme3.light.DirectionalLight;
+import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.RenderManager;
 import com.jme3.math.Vector3f;
@@ -12,6 +15,11 @@ import com.jme3.renderer.Camera;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.post.filters.FogFilter;
+import com.jme3.scene.Geometry;
+import com.jme3.scene.shape.Box;
+import com.jme3.scene.shape.Sphere;
+import com.jme3.shadow.DirectionalLightShadowRenderer;
+import com.jme3.shadow.EdgeFilteringMode;
 
 public class GameState extends BaseAppState {
 
@@ -23,6 +31,10 @@ public class GameState extends BaseAppState {
     private RenderManager renderManager;
     private ViewPort viewPort;
     private AssetManager assetManager;
+
+    // Sun
+    private Geometry sunGeom;
+    private Vector3f lightDir = new Vector3f(-0.5f, -1.0f, -0.5f).normalizeLocal();
 
     @Override
     protected void initialize(Application app) {
@@ -61,6 +73,41 @@ public class GameState extends BaseAppState {
 
         // Also change your background color so the sky matches the fog!
         viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
+
+        // Sun and shadows
+        // AMBIENT LIGHT (Prevents shadows from being 100% pitch black)
+        AmbientLight al = new AmbientLight();
+        al.setColor(ColorRGBA.White.mult(0.3f));
+        rootNode.addLight(al);
+
+        // THE SUN (Directional Light)
+        DirectionalLight sun = new DirectionalLight();
+        sun.setColor(ColorRGBA.White.mult(1.2f)); // Slightly brighter than white
+        // Pointing down and slightly to the side to cast cool angled shadows
+        sun.setDirection(new Vector3f(-0.5f, -1.0f, -0.5f).normalizeLocal());
+        rootNode.addLight(sun);
+
+        // SHADOW RENDERER
+        final int SHADOWMAP_SIZE = 2048; // Crisp shadow resolution
+        DirectionalLightShadowRenderer dlsr = new DirectionalLightShadowRenderer(assetManager, SHADOWMAP_SIZE, 3);
+        dlsr.setLight(sun);
+        dlsr.setShadowIntensity(0.5f);
+        dlsr.setEdgeFilteringMode(EdgeFilteringMode.PCF8);
+        dlsr.setShadowZExtend(150f);
+
+        viewPort.addProcessor(dlsr);
+
+        // Setup sun object
+        Sphere sunBox = new Sphere(5, 10, 10);
+        sunGeom = new Geometry("Sun", sunBox);
+        Material sunMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        sunMat.setColor("Color", new ColorRGBA(1.0f, 0.9f, 0.6f, 1.0f)); // Warm yellow/white
+        sunGeom.setMaterial(sunMat);
+
+        sunGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Off);
+
+        rootNode.attachChild(sunGeom);
+
     }
 
     @Override
@@ -73,6 +120,10 @@ public class GameState extends BaseAppState {
         if (minimap != null) {
             minimap.update(cam.getLocation());
         }
+
+        // Make the Sun follow the player
+        Vector3f sunPosition = lightDir.mult(-300f).add(cam.getLocation());
+        sunGeom.setLocalTranslation(sunPosition);
     }
 
     @Override

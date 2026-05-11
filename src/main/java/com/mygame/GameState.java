@@ -16,6 +16,7 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Node;
 import com.jme3.post.filters.FogFilter;
 import com.jme3.scene.Geometry;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Sphere;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
@@ -35,6 +36,10 @@ public class GameState extends BaseAppState {
     // Sun
     private Geometry sunGeom;
     private Vector3f lightDir = new Vector3f(-0.5f, -1.0f, -0.5f).normalizeLocal();
+
+    // Clouds
+    private Spatial cloudLayer;
+    private float cloudTimer = 0;
 
     @Override
     protected void initialize(Application app) {
@@ -108,6 +113,10 @@ public class GameState extends BaseAppState {
 
         rootNode.attachChild(sunGeom);
 
+        // init clouds
+        cloudLayer = CloudFactory.createClouds(assetManager);
+        rootNode.attachChild(cloudLayer);
+
     }
 
     @Override
@@ -124,6 +133,17 @@ public class GameState extends BaseAppState {
         // Make the Sun follow the player
         Vector3f sunPosition = lightDir.mult(-300f).add(cam.getLocation());
         sunGeom.setLocalTranslation(sunPosition);
+
+        // Cloud moving / drifting logic
+        cloudTimer += tpf * 0.5f;
+
+        float camX = cam.getLocation().x;
+        float camZ = cam.getLocation().z;
+
+        float snapX = (float) Math.floor((camX - cloudTimer + 500f) / 1000f) * 1000f;
+        float snapZ = (float) Math.floor((camZ + 500f) / 1000f) * 1000f;
+
+        cloudLayer.setLocalTranslation(snapX - 1200 + cloudTimer, 350, snapZ - 1200);
     }
 
     @Override

@@ -101,7 +101,7 @@ public class TerrainGenerator {
     }
 
     // =========================================================================
-    // ROLE 3's MATH FUNCTIONS (Preserved exactly, just made static)
+    // ROLE 3's MATH 
     // =========================================================================
     private static int generateHeight(double x, double z) {
 
@@ -110,14 +110,11 @@ public class TerrainGenerator {
         double baseNoise = getLayeredNoise(x, z, 0.002f, 4, 0.5);
         double baseHeight = 75 + (baseNoise * 20); // Base sits comfortably around Y=75
 
-        // 2. TRUE MOUNTAINS
-        // We use ridged noise, but we cube it (m * m * m). 
-        // This forces 80% of the map to stay flat, but the remaining 20% violently spikes into mountains.
+        // TRUE MOUNTAINS
         double m = getRidgedNoise(x + 1000, z + 1000, 0.003f, 4, 0.5);
         double mountainHeight = m * m * m * 160; // Up to 160 blocks tall!
 
         // 3. MICRO-DETAILS
-        // High frequency noise that adds +/- 3 blocks of random bumps everywhere to kill flat plateaus
         double detail = getLayeredNoise(x, z, 0.03f, 2, 0.5) * 3;
 
         // 4. RIVERS

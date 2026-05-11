@@ -21,6 +21,7 @@ import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Sphere;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
 import com.jme3.shadow.EdgeFilteringMode;
+import com.jme3.shadow.DirectionalLightShadowFilter;
 
 public class GameState extends BaseAppState {
 
@@ -61,26 +62,7 @@ public class GameState extends BaseAppState {
         cam.lookAt(new Vector3f(24, 0, 24), Vector3f.UNIT_Y);
         this.app.getFlyByCamera().setMoveSpeed(70f);
 
-        // Setup Fog
-        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
-        FogFilter fog = new FogFilter();
-
-        // Match the fog color to a light blue sky
-        fog.setFogColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
-
-        // How far away the fog starts getting thick
-        fog.setFogDistance(150);
-        // How dense the fog is (higher = harder to see through)
-        fog.setFogDensity(1f);
-
-        fpp.addFilter(fog);
-        viewPort.addProcessor(fpp);
-
-        // Also change your background color so the sky matches the fog!
-        viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
-
-        // Sun and shadows
-        // AMBIENT LIGHT (Prevents shadows from being 100% pitch black)
+        // Sun 
         AmbientLight al = new AmbientLight();
         al.setColor(ColorRGBA.White.mult(0.3f));
         rootNode.addLight(al);
@@ -89,18 +71,37 @@ public class GameState extends BaseAppState {
         DirectionalLight sun = new DirectionalLight();
         sun.setColor(ColorRGBA.White.mult(1.2f)); // Slightly brighter than white
         // Pointing down and slightly to the side to cast cool angled shadows
-        sun.setDirection(new Vector3f(-0.5f, -1.0f, -0.5f).normalizeLocal());
+        sun.setDirection(new Vector3f(-0.8f, -1.2f, -0.3f).normalizeLocal());
         rootNode.addLight(sun);
 
-        // SHADOW RENDERER
-        final int SHADOWMAP_SIZE = 2048; // Crisp shadow resolution
-        DirectionalLightShadowRenderer dlsr = new DirectionalLightShadowRenderer(assetManager, SHADOWMAP_SIZE, 3);
-        dlsr.setLight(sun);
-        dlsr.setShadowIntensity(0.5f);
-        dlsr.setEdgeFilteringMode(EdgeFilteringMode.PCF8);
-        dlsr.setShadowZExtend(150f);
+        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
 
-        viewPort.addProcessor(dlsr);
+        // 2. THE SHADOW FILTER
+        DirectionalLightShadowFilter dlsf = new DirectionalLightShadowFilter(assetManager, 2048, 3);
+        dlsf.setLight(sun);
+        dlsf.setShadowIntensity(0.3f);
+        dlsf.setEdgeFilteringMode(EdgeFilteringMode.PCFPOISSON);
+        dlsf.setShadowZExtend(150f);
+        dlsf.setLambda(0.55f);
+
+        // This keeps the shadows from bleeding through the hollow insides of the terrain
+        //dlsf.setRenderBackFacesShadows(false);
+        // CRITICAL: Add shadows to the pipeline FIRST
+        fpp.addFilter(dlsf);
+
+        // 3. THE FOG FILTER
+        FogFilter fog = new FogFilter();
+        fog.setFogColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
+        fog.setFogDistance(150);
+        fog.setFogDensity(1f);
+
+        // CRITICAL: Add fog SECOND, so it successfully hides the distant shadows
+        fpp.addFilter(fog);
+
+        // 4. ATTACH TO VIEWPORT
+        viewPort.addProcessor(fpp);
+
+        viewPort.setBackgroundColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
 
         // Setup sun object
         Sphere sunBox = new Sphere(5, 10, 10);

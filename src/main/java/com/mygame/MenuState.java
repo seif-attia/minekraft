@@ -33,12 +33,18 @@ public class MenuState extends BaseAppState {
         // APPLY TO ALL UI ELEMENTS (Labels and Buttons)
         GuiGlobals.getInstance().getStyles().getSelector("glass").set("font", minekraftFont);
         GuiGlobals.getInstance().getStyles().getSelector("glass").set("fontSize", 32f);
+        GuiGlobals.getInstance().getStyles().getSelector("button", "glass").set("preferredSize", new Vector3f(400, 50, 0));
+        GuiGlobals.getInstance().getStyles().getSelector("button", "glass").set("textElement.textHAlignment", com.jme3.font.BitmapFont.Align.Center);
+        GuiGlobals.getInstance().getStyles().getSelector("button", "glass").set("textElement.textVAlignment", com.jme3.font.BitmapFont.VAlign.Center);
+        // Get the selector for buttons in the glass style
+        var btnStyle = GuiGlobals.getInstance().getStyles().getSelector("button", "glass");
 
-        GuiGlobals.getInstance().getStyles().setDefaultStyle("glass");
+        // Center horizontally
+        btnStyle.set("textElement.textHAlignment", com.jme3.font.BitmapFont.Align.Center);
 
-        // 1. Initialize Lemur Globals
-        GuiGlobals.initialize(app);
-        BaseStyles.loadGlassStyle();
+        // Center vertically
+        btnStyle.set("textElement.textVAlignment", com.jme3.font.BitmapFont.VAlign.Center);
+
         GuiGlobals.getInstance().getStyles().setDefaultStyle("glass");
 
         // 2. Create the main container (a vertical stack)
@@ -47,7 +53,7 @@ public class MenuState extends BaseAppState {
         // Position it in the center of the screen
         float screenWidth = app.getContext().getSettings().getWidth();
         float screenHeight = app.getContext().getSettings().getHeight();
-        myWindow.setLocalTranslation(screenWidth / 2 - 100, screenHeight / 2 + 150, 0);
+        myWindow.setLocalTranslation(screenWidth / 2 - 100, screenHeight / 2 , 0);
 
         // Create a separate container just for the logo
         logoWindow = new Container();
@@ -67,36 +73,26 @@ public class MenuState extends BaseAppState {
 
         // 3. Button: Start Game (Initializes GameState)
         Button WorldsBtn = myWindow.addChild(new Button("Worlds"));
-        WorldsBtn.setFont(minekraftFont);
-        WorldsBtn.setFontSize(32f);
         WorldsBtn.addClickCommands(new Command<Button>() {
             @Override
             public void execute(Button source) {
                 startGame();
             }
         });
-        
+       
         // 4. Button: Settings (Placeholder)
         Button settingsBtn = myWindow.addChild(new Button("Settings"));
-        settingsBtn.setFont(minekraftFont);
-        settingsBtn.setFontSize(32f);
         
         // 5. Button: Credits (Placeholder)
         Button creditsBtn = myWindow.addChild(new Button("Credits"));
-        creditsBtn.setFont(minekraftFont);
-        creditsBtn.setFontSize(32f);
-        
-        
 
         // 6. Button: Quit
         Button quitBtn = myWindow.addChild(new Button("Quit"));
-        quitBtn.setFont(minekraftFont);
-        quitBtn.setFontSize(32f);
         quitBtn.addClickCommands(source -> System.exit(0));
         myWindow.setLocalTranslation(screenWidth / 2, screenHeight / 2, 0);
         
         Vector3f size = myWindow.getPreferredSize();
-    myWindow.setLocalTranslation(screenWidth / 2 - size.x / 2, screenHeight / 2 + size.y / 2, 0);
+        myWindow.setLocalTranslation(screenWidth / 2 - size.x / 2, screenHeight / 2 + size.y / 2, 0);
     }
 
     private void startGame() {

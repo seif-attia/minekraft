@@ -33,6 +33,14 @@ public class PauseState extends BaseAppState implements ActionListener {
         // 1. Settings Buttons (Mirrors SettingsState)
         Checkbox hudbtn = pauseWindow.addChild(new Checkbox("Hide HUD"));
         configureSetting(hudbtn, buttonSize, spaceBetween);
+        hudbtn.getModel().setChecked(Main.hideHud);
+        hudbtn.addClickCommands(source -> {
+            Main.hideHud = hudbtn.getModel().isChecked();
+            GameState gs = getStateManager().getState(GameState.class);
+            if (gs != null) {
+                gs.setHudVisible(!Main.hideHud);
+            }
+        });
         
         Checkbox minimapbtn = pauseWindow.addChild(new Checkbox("Hide Minimap"));
         configureSetting(minimapbtn, buttonSize, spaceBetween);

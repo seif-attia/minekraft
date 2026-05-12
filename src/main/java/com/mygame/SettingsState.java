@@ -35,6 +35,8 @@ public class SettingsState extends BaseAppState {
         
         Checkbox hudbtn = settingsWindow.addChild(new Checkbox("Hide HUD"));
         configureSetting(hudbtn, buttonSize, spaceBetween);
+        hudbtn.getModel().setChecked(Main.hideHud);
+        hudbtn.addClickCommands(source -> Main.hideHud = hudbtn.getModel().isChecked());
         
         Checkbox minimapbtn = settingsWindow.addChild(new Checkbox("Hide Minimap"));
         configureSetting(minimapbtn, buttonSize, spaceBetween);

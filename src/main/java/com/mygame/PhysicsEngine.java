@@ -20,6 +20,10 @@ public class PhysicsEngine {
             return;
         }
 
+        if (player.wantsToJump) {
+            player.jump();
+        }
+
         // 1. Apply Gravity to Y velocity
         player.velocity.y += player.gravity * tpf;
 

@@ -308,8 +308,8 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
             movementManager.setLeft(isPressed);
         } else if (name.equals("Right")) {
             movementManager.setRight(isPressed);
-        } else if (name.equals("Jump") && isPressed) {
-            player.jump();
+        } else if (name.equals("Jump")) {
+            player.wantsToJump = isPressed;
         } else if (name.equals("ToggleGhost") && isPressed) {
             // player.toggleGhostMode();
         } // Raycasting Actions

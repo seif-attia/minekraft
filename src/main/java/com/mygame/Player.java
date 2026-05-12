@@ -17,6 +17,7 @@ public class Player {
 
     public boolean onGround = false;
     public boolean isGhostMode = false;
+    public boolean wantsToJump = false;
 
     // Physics constants
     public float moveSpeed = 10.0f;
@@ -27,7 +28,8 @@ public class Player {
     public void jump() {
         if (onGround && !isGhostMode) {
             velocity.y = jumpForce;
-            onGround = false; // Immediately set to false so gravity takes over
+            onGround = false;
+            wantsToJump = false; // Reset once triggered
         }
     }
 

@@ -42,6 +42,33 @@ public class MovementManager {
         return moveDir;
     }
 
+    public Vector3f getGhostMoveDirection() {
+        Vector3f moveDir = new Vector3f(0, 0, 0);
+        // Use the full rotation (Pitch + Yaw) for 3D flight
+        Quaternion rot = new Quaternion().fromAngles(player.pitch, player.yaw, 0);
+
+        Vector3f forwardVec = rot.getRotationColumn(2).normalizeLocal();
+        Vector3f leftVec = rot.getRotationColumn(0).normalizeLocal();
+
+        if (forward) {
+            moveDir.addLocal(forwardVec);
+        }
+        if (back) {
+            moveDir.subtractLocal(forwardVec);
+        }
+        if (left) {
+            moveDir.addLocal(leftVec);
+        }
+        if (right) {
+            moveDir.subtractLocal(leftVec);
+        }
+
+        if (moveDir.lengthSquared() > 0) {
+            moveDir.normalizeLocal();
+        }
+        return moveDir;
+    }
+
     // Input Setters
     public void setForward(boolean v) {
         forward = v;

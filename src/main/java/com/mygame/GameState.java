@@ -94,7 +94,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         movementManager = new MovementManager(player);
         physicsEngine = new PhysicsEngine(player, myWorld, movementManager);
         raycastManager = new RaycastManager(cam, myWorld);
-        selectionManager = new SelectionManager(rootNode, assetManager, raycastManager);
+        selectionManager = new SelectionManager(rootNode, assetManager, raycastManager, player);
 
         // 2. Setup Inputs 
         initKeys();
@@ -177,7 +177,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         FogFilter fog = new FogFilter();
         fog.setFogColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
         fog.setFogDistance(300);
-        fog.setFogDensity(0.8f);
+        fog.setFogDensity(0.7f);
 
         fpp.addFilter(fog);
 
@@ -311,18 +311,23 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         } else if (name.equals("Jump")) {
             player.wantsToJump = isPressed;
         } else if (name.equals("ToggleGhost") && isPressed) {
-            // player.toggleGhostMode();
+            player.toggleGhostMode();
+            System.out.println("Ghost Mode: " + (player.isGhostMode ? "ON" : "OFF"));
         } // Raycasting Actions
         else if (name.equals("Shoot") && isPressed) {
-            RaycastResult res = raycastManager.currentResult;
-            if (res != null) {
-                myWorld.setBlockGlobal((int) res.blockPos.x, (int) res.blockPos.y, (int) res.blockPos.z, (byte) 0);
-            };
+            if (!player.isGhostMode) {
+                RaycastResult res = raycastManager.currentResult;
+                if (res != null) {
+                    myWorld.setBlockGlobal((int) res.blockPos.x, (int) res.blockPos.y, (int) res.blockPos.z, (byte) 0);
+                }
+            }
         } else if (name.equals("Delete") && isPressed) {
-            RaycastResult res = raycastManager.currentResult;
-            if (res != null) {
-                // Use the 'adjacent' position to place the new block next to the one hit
-                myWorld.setBlockGlobal((int) res.adjacent.x, (int) res.adjacent.y, (int) res.adjacent.z, (byte) 1);
+            if (!player.isGhostMode) {
+                RaycastResult res = raycastManager.currentResult;
+                if (res != null) {
+                    // Use the 'adjacent' position to place the new block next to the one hit
+                    myWorld.setBlockGlobal((int) res.adjacent.x, (int) res.adjacent.y, (int) res.adjacent.z, (byte) 1);
+                }
             }
         }
     }

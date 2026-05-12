@@ -41,6 +41,14 @@ public class PhysicsEngine {
         move(0, player.velocity.y * tpf, 0);
     }
 
+    private void handleGhostUpdate(float tpf) {
+        // Get desired direction (includes vertical tilt)
+        Vector3f moveDir = movement.getGhostMoveDirection();
+
+        // In ghost mode, we move the position directly with no collision checks
+        player.position.addLocal(moveDir.mult(player.moveSpeed * 3.5f * tpf));
+    }
+
     private void move(float dx, float dy, float dz) {
         float nextX = player.position.x + dx;
         float nextY = player.position.y + dy;
@@ -98,10 +106,4 @@ public class PhysicsEngine {
         return val != 0 && val != 5 && val != 10;
     }
 
-    private void handleGhostUpdate(float tpf) {
-        // Simplified fly movement for ghost mode
-        Vector3f walkVel = movement.getDesiredMoveVelocity();
-        player.position.addLocal(walkVel.mult(tpf * 3)); // Faster in ghost mode
-        player.velocity.set(0, 0, 0);
-    }
 }

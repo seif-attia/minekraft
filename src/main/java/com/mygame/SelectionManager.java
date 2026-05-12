@@ -15,10 +15,12 @@ public class SelectionManager {
     private Geometry selectionObject;
     private Node rootNode;
     private RaycastManager raycastManager;
+    private Player player;
 
-    public SelectionManager(Node rootNode, AssetManager assetManager, RaycastManager raycastManager) {
+    public SelectionManager(Node rootNode, AssetManager assetManager, RaycastManager raycastManager, Player player) {
         this.rootNode = rootNode;
         this.raycastManager = raycastManager;
+        this.player = player;
 
         // Create a wireframe box slightly larger than 1x1x1 to prevent z-fighting
         WireBox wireBox = new WireBox(0.505f, 0.505f, 0.505f);
@@ -33,7 +35,7 @@ public class SelectionManager {
     public void update() {
         RaycastResult result = raycastManager.currentResult;
 
-        if (result != null) {
+        if (result != null && !player.isGhostMode) {
             // If the ray hit a block, show the box and move it to the block center
             if (selectionObject.getParent() == null) {
                 rootNode.attachChild(selectionObject);

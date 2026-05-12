@@ -21,7 +21,7 @@ public class Player {
 
     // Physics constants
     public float moveSpeed = 10.0f;
-    public float jumpForce = 8.5f;
+    public float jumpForce = 8f;
     public float gravity = -25.0f;
     public float mouseSensitivity = 2.0f;
 
@@ -31,6 +31,13 @@ public class Player {
             onGround = false;
             wantsToJump = false; // Reset once triggered
         }
+    }
+
+    public void toggleGhostMode() {
+        this.isGhostMode = !this.isGhostMode;
+        // Reset velocity so you stop moving physically the moment you enter ghost mode
+        this.velocity.set(0, 0, 0);
+        this.onGround = false;
     }
 
     public void rotate(float yawValue, float pitchValue) {

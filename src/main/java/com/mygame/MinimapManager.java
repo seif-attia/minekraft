@@ -19,14 +19,16 @@ public class MinimapManager {
 
     private Camera minimapCam;
     private ViewPort minimapView;
+    private RenderManager renderManager;
 
     public MinimapManager(RenderManager renderManager, Camera mainCam, Node worldNode) {
 
         // Clone the main camera
         minimapCam = mainCam.clone();
+        this.renderManager = renderManager;
 
         //  Set the screen region (Top Right Corner)
-        minimapCam.setViewPort(0.78f, 0.98f, 0.78f, 0.98f);
+        minimapCam.setViewPort(0.79f, 0.98f, 0.71f, 0.98f);
 
         // Make it flat/orthographic
         minimapCam.setParallelProjection(true);
@@ -45,10 +47,18 @@ public class MinimapManager {
         minimapView.attachScene(worldNode);
     }
 
+    public void cleanup() {
+        if (minimapView != null) {
+            minimapView.clearScenes();
+            renderManager.removeMainView(minimapView);
+            // Optionally remove from post-processors if you added any
+        }
+    }
+
     /**
      * Gets called every frame to keep the minimap centered over the player.
      */
     public void update(Vector3f playerLocation) {
-        minimapCam.setLocation(new Vector3f(playerLocation.x, 150f, playerLocation.z));
+        minimapCam.setLocation(new Vector3f(playerLocation.x, 350f, playerLocation.z));
     }
 }

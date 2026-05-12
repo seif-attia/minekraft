@@ -76,9 +76,17 @@ public class MenuState extends BaseAppState {
        
         // 4. Button: Settings (Placeholder)
         Button settingsBtn = myWindow.addChild(new Button("Settings"));
+        settingsBtn.addClickCommands(source -> {
+            getStateManager().detach(this); // Remove Main Menu
+            getStateManager().attach(new SettingsState()); // Attach Settings Screen
+        });
         
         // 5. Button: Credits (Placeholder)
         Button creditsBtn = myWindow.addChild(new Button("Credits"));
+        creditsBtn.addClickCommands(source -> {
+        getStateManager().detach(this);
+        getStateManager().attach(new CreditsState());
+    });
 
         // 6. Button: Quit
         Button quitBtn = myWindow.addChild(new Button("Quit"));
@@ -116,6 +124,7 @@ public class MenuState extends BaseAppState {
         myWindow.removeFromParent();
         this.app.getFlyByCamera().setDragToRotate(false);
         this.app.getInputManager().setCursorVisible(false);
+        GuiGlobals.getInstance().getFocusManagerState().setFocus(null);
     }
 
     @Override

@@ -25,14 +25,12 @@ public class ChunkMesher {
     }
 
     private boolean shouldDrawFace(byte currentBlock, byte neighborBlock) {
-        if (neighborBlock == 0) {
-            return true;
-        }
+
         if (currentBlock == neighborBlock) {
             return false;
         }
-        // Draw against transparent blocks (Assuming 4 is Water, 8 is Leaves)
-        return neighborBlock == 5 || neighborBlock == 9 || neighborBlock == 10;
+
+        return isTransparent(neighborBlock);
     }
 
     /**
@@ -506,5 +504,9 @@ public class ChunkMesher {
         b.indices.add(off + 3);
         b.indices.add(off + 2);
         b.vertexOffset += 4;
+    }
+
+    private boolean isTransparent(byte id) {
+        return id == 0 || id == 5 || id == 9 || id == 10 || id == 12;
     }
 }

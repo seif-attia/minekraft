@@ -31,13 +31,16 @@ public class Main extends SimpleApplication {
         app.setSettings(settings);
         app.setShowSettings(false);
         app.start();
+
     }
 
     @Override
     public void simpleInitApp() {
 
-        setDisplayFps(false);
-        setDisplayStatView(false);
+
+        cam.setFrustumPerspective(90f, (float) cam.getWidth() / cam.getHeight(), 0.01f, 1000f);
+        setDisplayFps(true);
+        setDisplayStatView(true);
         stateManager.attach(new MenuState());
 
     }

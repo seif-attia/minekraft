@@ -31,8 +31,7 @@ import java.util.Queue;
 public class WorldManager {
 
     private boolean isWireframe = false;
-
-    private int renderDistance = 20; // Loads a grid of chunks around the player, so its nxn + 1
+    private int renderDistance = 14; // Loads a grid of chunks around the player, so its nxn + 1
 
     private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
     private Map<ChunkPos, Node> activeGeometries = new HashMap<>();
@@ -108,6 +107,12 @@ public class WorldManager {
         blockMaterials.put((byte) 9, createRepeatingMaterial("Textures/leaves.png", true));
         // ID 10: Tall Grass
         blockMaterials.put((byte) 10, createRepeatingMaterial("Textures/tall_grass.png", true));
+        // ID 11: Bricks
+        blockMaterials.put((byte) 11, createRepeatingMaterial("Textures/bricks.png", false));
+        // ID 12: glass
+        blockMaterials.put((byte) 12, createRepeatingMaterial("Textures/glass.png", false));
+        // ID 13: Planks
+        blockMaterials.put((byte) 13, createRepeatingMaterial("Textures/planks.png", false));
 
     }
 
@@ -292,6 +297,23 @@ public class WorldManager {
         int localZ = Math.floorMod(globalZ, Chunk.CHUNK_SIZE);
 
         return activeChunks.get(targetChunk).getBlock(localX, globalY, localZ);
+    }
+
+    public void setBlockGlobal(int x, int y, int z, byte blockId) {
+        int chunkX = Math.floorDiv(x, Chunk.CHUNK_SIZE);
+        int chunkZ = Math.floorDiv(z, Chunk.CHUNK_SIZE);
+        ChunkPos pos = new ChunkPos(chunkX, chunkZ);
+
+        Chunk chunk = activeChunks.get(pos);
+        if (chunk != null) {
+            int localX = Math.floorMod(x, Chunk.CHUNK_SIZE);
+            int localZ = Math.floorMod(z, Chunk.CHUNK_SIZE);
+
+            chunk.setBlock(localX, y, localZ, blockId);
+
+            // RE-MESH: Tell the engine to recreate the 3D model for this chunk!
+            rebuildChunk(pos);
+        }
     }
 
     // Chunk neighbor notification system to cull the meshes of the outer chunk borders after generating new chunks

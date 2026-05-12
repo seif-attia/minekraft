@@ -81,6 +81,10 @@ public class MenuState extends BaseAppState {
         
         // 5. Button: Credits (Placeholder)
         Button creditsBtn = myWindow.addChild(new Button("Credits"));
+        creditsBtn.addClickCommands(source -> {
+        getStateManager().detach(this);
+        getStateManager().attach(new CreditsState());
+    });
 
         // 6. Button: Quit
         Button quitBtn = myWindow.addChild(new Button("Quit"));

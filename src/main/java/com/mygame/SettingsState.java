@@ -38,6 +38,8 @@ public class SettingsState extends BaseAppState {
         
         Checkbox minimapbtn = settingsWindow.addChild(new Checkbox("Hide Minimap"));
         configureSetting(minimapbtn, buttonSize, spaceBetween);
+        minimapbtn.getModel().setChecked(Main.hideMinimap);
+        minimapbtn.addClickCommands(source -> Main.hideMinimap = minimapbtn.getModel().isChecked());
         
         Checkbox fpsbtn = settingsWindow.addChild(new Checkbox("Show FPS"));
         configureSetting(fpsbtn, buttonSize, spaceBetween);
@@ -53,7 +55,6 @@ public class SettingsState extends BaseAppState {
         Button backBtn = settingsWindow.addChild(new Button("Back"));
         backBtn.setTextHAlignment(HAlignment.Center);
         backBtn.setTextVAlignment(VAlignment.Center);
-        
         backBtn.addClickCommands(source -> {
             getStateManager().detach(this);
             getStateManager().attach(new MenuState());

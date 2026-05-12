@@ -63,9 +63,7 @@ public class MenuState extends BaseAppState {
         logoWindow.setLocalTranslation((screenWidth / 2 - logoWindow.getPreferredSize().x / 2) - 10, screenHeight + 120, 0);
 
         // Don't forget to attach it in onEnable() and detach in onDisable()!
-        
 
-        
         // 3. Button: Start Game (Initializes GameState)
         Button WorldsBtn = myWindow.addChild(new Button("Worlds"));
         WorldsBtn.addClickCommands(source -> {
@@ -108,14 +106,18 @@ public class MenuState extends BaseAppState {
         myWindow.setLocalTranslation(screenWidth / 2 - size.x / 2, (screenHeight / 2 + size.y / 2) - 80, 0);
     }
 
-   
+    private void startGame() {
+        // Switch states: Kill the menu, start the game
+        getStateManager().detach(this);
+        getStateManager().attach(new GameState());
+    }
+
     @Override
     protected void onEnable() {
         this.app.getGuiNode().attachChild(logoWindow);
         this.app.getGuiNode().attachChild(myWindow);
         this.app.getFlyByCamera().setDragToRotate(true);
         this.app.getInputManager().setCursorVisible(true);
-       
     }
 
     @Override

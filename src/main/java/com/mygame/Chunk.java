@@ -20,18 +20,6 @@ public class Chunk {
         blocks = new byte[CHUNK_SIZE][CHUNK_HEIGHT][CHUNK_SIZE];
     }
 
-    //aaa > to restore chunks (for saving in files)
-    public byte[][][] getBlocksInternal() {
-        return this.blocks;
-    }
-
-    //aaa > used on loading a chunk from a file
-    public void setBlocks(byte[][][] savedData) {
-        if (savedData != null) {
-            this.blocks = savedData;
-        }
-    }
-    
     public byte getBlock(int x, int y, int z) {
         if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE) {
             return 0; // Treat out of bounds as Air

@@ -107,6 +107,12 @@ public class WorldManager {
         blockMaterials.put((byte) 9, createRepeatingMaterial("Textures/leaves.png", true));
         // ID 10: Tall Grass
         blockMaterials.put((byte) 10, createRepeatingMaterial("Textures/tall_grass.png", true));
+        // ID 11: Bricks
+        blockMaterials.put((byte) 11, createRepeatingMaterial("Textures/bricks.png", false));
+        // ID 12: glass
+        blockMaterials.put((byte) 12, createRepeatingMaterial("Textures/glass.png", false));
+        // ID 13: Planks
+        blockMaterials.put((byte) 13, createRepeatingMaterial("Textures/planks.png", false));
 
     }
 

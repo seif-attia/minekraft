@@ -12,6 +12,7 @@ public class Main extends SimpleApplication {
     public static boolean statsflag = false;
 
     public static boolean hideMinimap = false;
+
     public static void main(String[] args) {
         Main app = new Main();
 
@@ -25,7 +26,9 @@ public class Main extends SimpleApplication {
         } catch (IOException e) {
             System.err.println("Could not load window icon: " + e.getMessage());
         }
-        settings.setResolution(1280, 768);
+        //settings.setResolution(1280, 768);
+        settings.setResolution(1920, 1080);
+        settings.setFullscreen(true);
         settings.setVSync(false);
         settings.setFrameRate(-1);
         settings.setBitsPerPixel(32);
@@ -39,7 +42,6 @@ public class Main extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
-
 
         getInputManager().deleteMapping(SimpleApplication.INPUT_MAPPING_EXIT);
 

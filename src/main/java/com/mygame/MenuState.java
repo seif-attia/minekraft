@@ -21,10 +21,18 @@ public class MenuState extends BaseAppState {
     private SimpleApplication app;
     private Container myWindow;
     private Container logoWindow;
+    private BackgroundHelper background;
 
     @Override
     protected void initialize(Application app) {
         this.app = (SimpleApplication) app;
+        
+        background = new BackgroundHelper(
+        app.getAssetManager(),
+        "Textures/Background.jpeg",   // your image path
+        app.getContext().getSettings().getWidth(),
+        app.getContext().getSettings().getHeight()
+    );
         
         GuiGlobals.initialize(app);
         BaseStyles.loadGlassStyle();
@@ -114,6 +122,7 @@ public class MenuState extends BaseAppState {
 
     @Override
     protected void onEnable() {
+        background.attach(app.getGuiNode());
         this.app.getGuiNode().attachChild(logoWindow);
         this.app.getGuiNode().attachChild(myWindow);
         this.app.getFlyByCamera().setDragToRotate(true);
@@ -127,6 +136,7 @@ public class MenuState extends BaseAppState {
         this.app.getFlyByCamera().setDragToRotate(false);
         this.app.getInputManager().setCursorVisible(false);
         GuiGlobals.getInstance().getFocusManagerState().setFocus(null);
+        background.detach();
     }
 
     @Override

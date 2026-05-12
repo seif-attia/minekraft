@@ -60,6 +60,9 @@ public class HotbarManager {
         guiNode.attachChild(hotbarNode);           // attach the group to guiNode once
         updateHighlight(0);
     }
+    public void cleanup() {
+    hotbarNode.removeFromParent();
+}
 
     public void updateHighlight(int index) {
         float xPos = startX + (index * (SLOT_SIZE + SPACING)) - 4;

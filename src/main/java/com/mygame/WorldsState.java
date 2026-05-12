@@ -10,6 +10,7 @@ import com.simsilica.lemur.HAlignment;
 import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.Axis;
 import com.simsilica.lemur.component.SpringGridLayout;
+import com.simsilica.lemur.GuiGlobals;
 
 public class WorldsState extends BaseAppState {
 
@@ -62,6 +63,7 @@ public class WorldsState extends BaseAppState {
         worldsWindow.removeFromParent();
         this.app.getFlyByCamera().setDragToRotate(false);
         this.app.getInputManager().setCursorVisible(false);
+        GuiGlobals.getInstance().getFocusManagerState().setFocus(null);
     }
 
     @Override

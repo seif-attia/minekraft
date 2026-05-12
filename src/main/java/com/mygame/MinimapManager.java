@@ -19,11 +19,13 @@ public class MinimapManager {
 
     private Camera minimapCam;
     private ViewPort minimapView;
+    private RenderManager renderManager;
 
     public MinimapManager(RenderManager renderManager, Camera mainCam, Node worldNode) {
 
         // Clone the main camera
         minimapCam = mainCam.clone();
+        this.renderManager = renderManager;
 
         //  Set the screen region (Top Right Corner)
         minimapCam.setViewPort(0.78f, 0.98f, 0.78f, 0.98f);
@@ -43,6 +45,14 @@ public class MinimapManager {
 
         //Tells it to only draw the blocks 
         minimapView.attachScene(worldNode);
+    }
+    
+    public void cleanup() {
+        if (minimapView != null) {
+            minimapView.clearScenes();
+            renderManager.removeMainView(minimapView);
+            // Optionally remove from post-processors if you added any
+        }
     }
 
     /**

@@ -11,6 +11,7 @@ import com.simsilica.lemur.Container;
 import com.simsilica.lemur.HAlignment;
 import com.simsilica.lemur.VAlignment;
 import com.simsilica.lemur.Insets3f;
+import com.simsilica.lemur.GuiGlobals;
 
 public class SettingsState extends BaseAppState {
 
@@ -37,6 +38,8 @@ public class SettingsState extends BaseAppState {
         
         Checkbox minimapbtn = settingsWindow.addChild(new Checkbox("Hide Minimap"));
         configureSetting(minimapbtn, buttonSize, spaceBetween);
+        minimapbtn.getModel().setChecked(Main.hideMinimap);
+        minimapbtn.addClickCommands(source -> Main.hideMinimap = minimapbtn.getModel().isChecked());
         
         Checkbox fpsbtn = settingsWindow.addChild(new Checkbox("Show FPS"));
         configureSetting(fpsbtn, buttonSize, spaceBetween);
@@ -52,7 +55,6 @@ public class SettingsState extends BaseAppState {
         Button backBtn = settingsWindow.addChild(new Button("Back"));
         backBtn.setTextHAlignment(HAlignment.Center);
         backBtn.setTextVAlignment(VAlignment.Center);
-        
         backBtn.addClickCommands(source -> {
             getStateManager().detach(this);
             getStateManager().attach(new MenuState());
@@ -83,6 +85,7 @@ public class SettingsState extends BaseAppState {
         settingsWindow.removeFromParent();
         this.app.getFlyByCamera().setDragToRotate(false);
         this.app.getInputManager().setCursorVisible(false);
+        GuiGlobals.getInstance().getFocusManagerState().setFocus(null);
     }
 
     @Override

@@ -4,6 +4,8 @@ import com.jme3.math.Vector3f;
 
 public class Player {
 
+    public byte selectedBlockId = 1;
+
     // Physical state
     public Vector3f position = new Vector3f(8, 150, 8);
     public Vector3f velocity = new Vector3f(0, 0, 0);

@@ -53,6 +53,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     private PhysicsEngine physicsEngine;
     private SelectionManager selectionManager;
     private Node guiNode;
+    private com.jme3.font.BitmapText crosshair;
 
     // Sun
     private Geometry sunGeom;
@@ -112,6 +113,10 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         initCrosshair();
 
         hotbarManager = new HotbarManager(this.guiNode, assetManager, cam.getWidth());
+        
+        if (Main.hideHud) {
+            setHudVisible(false);
+        }
 
         // Disable the default flycam so our Player.java rotation math takes over
         flyCam.setEnabled(false);
@@ -506,30 +511,41 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     if (!enabled && minimap != null) {
         minimap.cleanup();
         minimap = null;
-    } else if (enabled && minimap == null) {
+        } else if (enabled && minimap == null) {
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
+        }
+    }
+    
+    public void setHudVisible(boolean visible) {
+    if (crosshair != null) {
+        crosshair.setCullHint(visible 
+            ? com.jme3.scene.Spatial.CullHint.Inherit 
+            : com.jme3.scene.Spatial.CullHint.Always);
+    }
+    if (hotbarManager != null) {
+        hotbarManager.setVisible(visible);
     }
 }
 
     private void initCrosshair() {
         // Load the default font from the asset manager
         com.jme3.font.BitmapFont guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
-        com.jme3.font.BitmapText ch = new com.jme3.font.BitmapText(guiFont, false);
+        crosshair = new com.jme3.font.BitmapText(guiFont, false);
 
         // Scale it up slightly and set the classic + symbol
-        ch.setSize(guiFont.getCharSet().getRenderedSize() * 2);
-        ch.setText("+");
+        crosshair.setSize(guiFont.getCharSet().getRenderedSize() * 2);
+        crosshair.setText("+");
 
         // Calculate the exact center of the screen based on current resolution
         float width = app.getContext().getSettings().getWidth();
         float height = app.getContext().getSettings().getHeight();
 
-        float x = (width / 2) - (ch.getLineWidth() / 2);
-        float y = (height / 2) + (ch.getLineHeight() / 2);
-        ch.setLocalTranslation(x, y, 0);
+        float x = (width / 2) - (crosshair.getLineWidth() / 2);
+        float y = (height / 2) + (crosshair.getLineHeight() / 2);
+        crosshair.setLocalTranslation(x, y, 0);
 
         // Attach to the GUI node so it renders on top of everything
-        app.getGuiNode().attachChild(ch);
+        app.getGuiNode().attachChild(crosshair);
     }
 
     private void initKeys() {

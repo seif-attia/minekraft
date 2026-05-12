@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mygame;
 
 import com.jme3.asset.AssetManager;
@@ -9,23 +5,18 @@ import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Quad;
 import com.jme3.ui.Picture;
 
-/**
- *
- * @author EyonMiner
- */
 public class HotbarManager {
-
     private Node guiNode;
+    private Node hotbarNode;       // NEW: groups all hotbar children
     private Geometry highlightBox;
-
     private final int SLOT_SIZE = 48;
     private final int SPACING = 8;
     private int startX;
-    private int startY = 20; // 20 pixels from the bottom of the screen
-
+    private int startY = 20;
     private String[] iconPaths = {
         "Textures/HotbarGrass_side.png",
         "Textures/HotbarDirt.png",
@@ -40,20 +31,18 @@ public class HotbarManager {
 
     public HotbarManager(Node guiNode, AssetManager assetManager, int screenWidth) {
         this.guiNode = guiNode;
+        this.hotbarNode = new Node("HotbarNode");  // NEW
 
-        // Calculate the starting X so the hotbar is perfectly centered
         int totalWidth = (SLOT_SIZE * 9) + (SPACING * 8);
         this.startX = (screenWidth / 2) - (totalWidth / 2);
 
-        // 1. Create the Highlight Box (Yellow square slightly larger than the slot)
         Quad quad = new Quad(SLOT_SIZE + 8, SLOT_SIZE + 8);
         highlightBox = new Geometry("Highlight", quad);
         Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         mat.setColor("Color", ColorRGBA.Yellow);
         highlightBox.setMaterial(mat);
-        guiNode.attachChild(highlightBox);
+        hotbarNode.attachChild(highlightBox);      // attach to hotbarNode, not guiNode
 
-        // 2. Load and position the 9 PNGs
         for (int i = 0; i < 9; i++) {
             Picture pic = new Picture("Slot_" + i);
             try {
@@ -63,25 +52,25 @@ public class HotbarManager {
             }
             pic.setWidth(SLOT_SIZE);
             pic.setHeight(SLOT_SIZE);
-
             float xPos = startX + (i * (SLOT_SIZE + SPACING));
             pic.setPosition(xPos, startY);
-
-            guiNode.attachChild(pic);
+            hotbarNode.attachChild(pic);           // attach to hotbarNode, not guiNode
         }
 
-        // Initialize the highlight on slot 1 (Index 0)
+        guiNode.attachChild(hotbarNode);           // attach the group to guiNode once
         updateHighlight(0);
     }
 
-    /**
-     * Moves the yellow highlight box behind the selected slot.
-     *
-     * @param index 0 to 8
-     */
     public void updateHighlight(int index) {
-        float xPos = startX + (index * (SLOT_SIZE + SPACING)) - 4; // -4 to center the larger box
+        float xPos = startX + (index * (SLOT_SIZE + SPACING)) - 4;
         float yPos = startY - 4;
-        highlightBox.setLocalTranslation(xPos, yPos, -1); // Z=-1 keeps it behind the PNGs
+        highlightBox.setLocalTranslation(xPos, yPos, -1);
+    }
+
+    // NEW
+    public void setVisible(boolean visible) {
+        hotbarNode.setCullHint(visible
+            ? Spatial.CullHint.Inherit
+            : Spatial.CullHint.Always);
     }
 }

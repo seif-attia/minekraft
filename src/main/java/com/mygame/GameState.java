@@ -51,6 +51,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     private AssetManager assetManager;
     private InputManager inputManager;
     private PhysicsEngine physicsEngine;
+    private SelectionManager selectionManager;
 
     // Sun
     private Geometry sunGeom;
@@ -93,6 +94,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         movementManager = new MovementManager(player);
         physicsEngine = new PhysicsEngine(player, myWorld, movementManager);
         raycastManager = new RaycastManager(cam, myWorld);
+        selectionManager = new SelectionManager(rootNode, assetManager, raycastManager);
 
         // 2. Setup Inputs 
         initKeys();
@@ -246,6 +248,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         // --- 1. THE MISSING PHYSICS AND MOVEMENT UPDATES ---
         physicsEngine.update(tpf);
         raycastManager.update(tpf);
+        selectionManager.update();
 
         // --- 2. SYNC CAMERA TO PLAYER ---
         // Move the camera to the player's body position + 1.6f units up for eye level
@@ -311,10 +314,16 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
             // player.toggleGhostMode();
         } // Raycasting Actions
         else if (name.equals("Shoot") && isPressed) {
-            // Let's assume ID 1 (Grass) for now, or you can make a selector!
-            //raycastManager.placeBlock((byte) 1);
+            RaycastResult res = raycastManager.currentResult;
+            if (res != null) {
+                myWorld.setBlockGlobal((int) res.blockPos.x, (int) res.blockPos.y, (int) res.blockPos.z, (byte) 0);
+            };
         } else if (name.equals("Delete") && isPressed) {
-            //raycastManager.deleteBlock();
+            RaycastResult res = raycastManager.currentResult;
+            if (res != null) {
+                // Use the 'adjacent' position to place the new block next to the one hit
+                myWorld.setBlockGlobal((int) res.adjacent.x, (int) res.adjacent.y, (int) res.adjacent.z, (byte) 1);
+            }
         }
     }
 

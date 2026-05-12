@@ -21,22 +21,21 @@ public class HotbarManager {
     private Node guiNode;
     private Geometry highlightBox;
 
-    private final int SLOT_SIZE = 64;
+    private final int SLOT_SIZE = 48;
     private final int SPACING = 8;
     private int startX;
     private int startY = 20; // 20 pixels from the bottom of the screen
 
-    // Expected paths for your PNGs in the assets/Textures/Hotbar folder
     private String[] iconPaths = {
-        "Textures/grass_side.png",
-        "Textures/dirt.png",
-        "Textures/stone.png",
-        "Textures/planks.png",
-        "Textures/glass.png",
-        "Textures/bricks.png",
-        "Textures/wood_side.png",
-        "Textures/snow.png",
-        "Textures/leaves.png"
+        "Textures/HotbarGrass_side.png",
+        "Textures/HotbarDirt.png",
+        "Textures/HotbarStone.png",
+        "Textures/HotbarPlanks.png",
+        "Textures/HotbarGlass.png",
+        "Textures/HotbarBricks.png",
+        "Textures/HotbarLog_side.png",
+        "Textures/HotBarSnow.png",
+        "Textures/HotbarLeaves.png"
     };
 
     public HotbarManager(Node guiNode, AssetManager assetManager, int screenWidth) {

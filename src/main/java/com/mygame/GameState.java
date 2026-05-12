@@ -73,6 +73,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     private FlyByCamera flyCam;
 
     private HotbarManager hotbarManager;
+    private int currentSlotIndex = 0;
 
     @Override
     protected void initialize(Application app) {
@@ -91,7 +92,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
 
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
-        
+
         if (Main.hideMinimap) {
             minimap.cleanup();
             minimap = null;
@@ -311,58 +312,84 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
+
+        if (name.equals("ScrollUp")) {
+            if (!player.isGhostMode) {
+                currentSlotIndex--;
+                if (currentSlotIndex < 0) {
+                    currentSlotIndex = 8; // Wrap to end
+                }
+                updateSelectedSlot(currentSlotIndex);
+            }
+        } else if (name.equals("ScrollDown")) {
+            if (!player.isGhostMode) {
+                currentSlotIndex++;
+                if (currentSlotIndex > 8) {
+                    currentSlotIndex = 0; // Wrap to start
+                }
+                updateSelectedSlot(currentSlotIndex);
+            }
+        } else if (isPressed && name.startsWith("Slot")) {
+            if (!player.isGhostMode) {
+                int slotNumber = Integer.parseInt(name.replace("Slot", ""));
+                int slotIndex = slotNumber - 1; // 0 to 8 for the UI
+
+                // Map the slot number to your specific Block IDs
+                switch (slotNumber) {
+                    case 1:
+                        player.selectedBlockId = 1;
+                        break;  // Grass
+                    case 2:
+                        player.selectedBlockId = 3;
+                        break;  // Dirt
+                    case 3:
+                        player.selectedBlockId = 4;
+                        break;  // Stone
+                    case 4:
+                        player.selectedBlockId = 13;
+                        break; // Planks
+                    case 5:
+                        player.selectedBlockId = 12;
+                        break; // Glass
+                    case 6:
+                        player.selectedBlockId = 11;
+                        break; // Bricks
+                    case 7:
+                        player.selectedBlockId = 7;
+                        break;  // Wood
+                    case 8:
+                        player.selectedBlockId = 6;
+                        break;  // Snow
+                    case 9:
+                        player.selectedBlockId = 9;
+                        break;  // Leaves
+                }
+                this.currentSlotIndex = slotIndex;
+
+                updateSelectedSlot(slotIndex);
+            }
+        }
         if (name.equals("Forward")) {
             movementManager.setForward(isPressed);
-        } else if (name.equals("Back")) {
+        }
+        if (name.equals("Back")) {
             movementManager.setBack(isPressed);
-        } else if (name.equals("Left")) {
+        }
+        if (name.equals("Left")) {
             movementManager.setLeft(isPressed);
-        } else if (name.equals("Right")) {
+        }
+        if (name.equals("Right")) {
             movementManager.setRight(isPressed);
-        } else if (name.equals("Jump")) {
+        }
+        if (name.equals("Jump")) {
             player.wantsToJump = isPressed;
-        } else if (isPressed && name.startsWith("Slot")) {
-            int slotNumber = Integer.parseInt(name.replace("Slot", ""));
-            int slotIndex = slotNumber - 1; // 0 to 8 for the UI
-
-            // Map the slot number to your specific Block IDs
-            switch (slotNumber) {
-                case 1:
-                    player.selectedBlockId = 1;
-                    break;  // Grass
-                case 2:
-                    player.selectedBlockId = 3;
-                    break;  // Dirt
-                case 3:
-                    player.selectedBlockId = 4;
-                    break;  // Stone
-                case 4:
-                    player.selectedBlockId = 13;
-                    break; // Planks
-                case 5:
-                    player.selectedBlockId = 12;
-                    break; // Glass
-                case 6:
-                    player.selectedBlockId = 11;
-                    break; // Bricks
-                case 7:
-                    player.selectedBlockId = 7;
-                    break;  // Wood
-                case 8:
-                    player.selectedBlockId = 6;
-                    break;  // Snow
-                case 9:
-                    player.selectedBlockId = 9;
-                    break;  // Leaves
-            }
-
-            // Move the visual highlight
-            hotbarManager.updateHighlight(slotIndex);
-        } else if (name.equals("ToggleGhost") && isPressed) {
+        }
+        if (name.equals("ToggleGhost") && isPressed) {
             player.toggleGhostMode();
             System.out.println("Ghost Mode: " + (player.isGhostMode ? "ON" : "OFF"));
-        } // Raycasting Actions
-        else if (name.equals("Delete") && isPressed) {
+        }
+        // Raycasting Actions
+        if (name.equals("Delete") && isPressed) {
             if (!player.isGhostMode) {
                 RaycastResult res = raycastManager.currentResult;
                 if (res != null) {
@@ -384,6 +411,42 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
                 }
             }
         }
+    }
+
+    private void updateSelectedSlot(int index) {
+        // 1. Map the index (0-8) back to your specific Block IDs
+        switch (index) {
+            case 0:
+                player.selectedBlockId = 1;
+                break;  // 1: Grass
+            case 1:
+                player.selectedBlockId = 3;
+                break;  // 2: Dirt
+            case 2:
+                player.selectedBlockId = 4;
+                break;  // 3: Stone
+            case 3:
+                player.selectedBlockId = 13;
+                break; // 4: Planks
+            case 4:
+                player.selectedBlockId = 12;
+                break; // 5: Glass
+            case 5:
+                player.selectedBlockId = 11;
+                break; // 6: Bricks
+            case 6:
+                player.selectedBlockId = 7;
+                break;  // 7: Wood
+            case 7:
+                player.selectedBlockId = 6;
+                break;  // 8: Snow
+            case 8:
+                player.selectedBlockId = 9;
+                break;  // 9: Leaves
+        }
+
+        // 2. Move the visual highlight box in the UI
+        hotbarManager.updateHighlight(index);
     }
 
     @Override
@@ -479,5 +542,10 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
 
         inputManager.addListener(this, "Place", "Delete", "Forward", "Back", "Left", "Right", "Jump", "ToggleGhost");
         inputManager.addListener(this, "MouseLeft", "MouseRight", "MouseUp", "MouseDown", "SpeedUp", "SpeedDown");
+        // scrolling for hotbar
+        inputManager.addMapping("ScrollUp", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, false));
+        inputManager.addMapping("ScrollDown", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, true));
+
+        inputManager.addListener(this, "ScrollUp", "ScrollDown");
     }
 }

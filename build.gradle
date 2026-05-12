@@ -85,6 +85,8 @@ dependencies {
 
   // Additional Libraries
   implementation 'org.jmonkeyengine:jme3-effects:3.6.1-stable'
+  
+    implementation 'com.github.stephengold:Minie:7.7.0'
 
   // Assets sub-project
   runtimeOnly project(':assets')

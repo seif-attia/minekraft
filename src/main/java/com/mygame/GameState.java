@@ -50,9 +50,12 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     private ViewPort viewPort;
     private AssetManager assetManager;
     private InputManager inputManager;
+
+    private String worldName; // our world name
     private PhysicsEngine physicsEngine;
     private SelectionManager selectionManager;
     private Node guiNode;
+
 
     // Sun
     private Geometry sunGeom;
@@ -66,6 +69,11 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     private ParticleEmitter ambientDust;
     private LightScatteringFilter godRays;
     private DirectionalLight sun;
+
+  
+    public GameState(String worldName) {
+        this.worldName = worldName;
+    }
 
     private Player player;
     private MovementManager movementManager;
@@ -89,8 +97,11 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         this.guiNode = this.app.getGuiNode();
 
         // Initialize the world logic moved from Main.simpleInitApp
-        myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
+        //myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
 
+        //aaa > passing the world name to the world manager
+        myWorld = new WorldManager(this.app, rootNode, assetManager, worldName);
+        
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
 
         if (Main.hideMinimap) {
@@ -481,10 +492,16 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
             myWorld.destroy();
         }
 
+        //aaa > assure no memory leak happens on using filters
+        rootNode.detachChildNamed("WorldNode");
+        app.getViewPort().getProcessors().clear();
+
+
         // Remove listeners so they don't leak into other game states
         if (inputManager != null) {
             inputManager.removeListener(this);
         }
+
 
     }
 

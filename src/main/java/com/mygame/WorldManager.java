@@ -22,6 +22,7 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.queue.RenderQueue;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.io.File;
 
 /**
  * Manages the infinite voxel world using a sliding window algorithm.
@@ -30,6 +31,9 @@ import java.util.Queue;
  */
 public class WorldManager {
 
+    private TerrainGenerator terrainGenerator;
+    private ChunkProvider chunkProvider;
+    private String worldName; //aaa > current world name
     private boolean isWireframe = false;
     private int renderDistance = 14; // Loads a grid of chunks around the player, so its nxn + 1
 
@@ -53,9 +57,15 @@ public class WorldManager {
     private AssetManager assetManager;
     private Map<Byte, Material> blockMaterials = new HashMap<>();
 
-    public WorldManager(Application app, Node rootNode, AssetManager assetManager) {
+    public WorldManager(Application app, Node rootNode, AssetManager assetManager, String worldName) {
         this.app = app;
-
+        //aaa
+        this.worldName = worldName;
+        this.assetManager = assetManager;
+        this.chunkProvider = new ChunkProvider(worldName);
+        long worldSeed = chunkProvider.getOrGenerateSeed();
+        this.terrainGenerator = new TerrainGenerator(worldSeed);
+        
         // Create a thread pool with all available threads in the computer
         int cores = Runtime.getRuntime().availableProcessors();
         this.executor = Executors.newFixedThreadPool(Math.max(2, cores - 1));
@@ -63,7 +73,7 @@ public class WorldManager {
         this.worldNode = new Node("WorldNode");
         rootNode.attachChild(this.worldNode);
 
-        this.assetManager = assetManager;
+       // this.assetManager = assetManager;
         this.mesher = new ChunkMesher();
 
         initMaterial();
@@ -213,8 +223,21 @@ public class WorldManager {
         executor.submit(() -> {
 
             // --- BACKGROUND THREAD ---
+            
+            // aaa > load choosen world files 
+            byte[][][] savedData = chunkProvider.loadChunk(pos);
+            
             Chunk newChunk = new Chunk();
-            TerrainGenerator.generateTerrain(newChunk, pos.x(), pos.z());
+           
+            if (savedData != null) {
+                // aaa > if it was saved before it puts the chunks
+                newChunk.setBlocks(savedData);
+            } else {
+                // aaa > use it when it is a new area to generate in it
+                terrainGenerator.generateTerrain(newChunk, pos.x(), pos.z());
+            }
+            
+           // TerrainGenerator.generateTerrain(newChunk, pos.x(), pos.z());
 
             activeChunks.put(pos, newChunk);
 
@@ -372,7 +395,11 @@ public class WorldManager {
     }
     // Destroys thread workers upon application shutdown
 
-    public void destroy() {
+    public void destroy() {  // aaa > saves all active chunks on exit / on destroying
+        System.out.println("AAA: Saving world [" + worldName + "] before shutdown...");
+        for (Map.Entry<ChunkPos, Chunk> entry : activeChunks.entrySet()) {
+            chunkProvider.saveChunk(entry.getKey(), entry.getValue().getBlocksInternal());
+        }
         executor.shutdownNow();
     }
 }

@@ -39,8 +39,8 @@ public class Main extends SimpleApplication {
 
 
         cam.setFrustumPerspective(90f, (float) cam.getWidth() / cam.getHeight(), 0.01f, 1000f);
-        setDisplayFps(true);
-        setDisplayStatView(true);
+        setDisplayFps(false);
+        setDisplayStatView(false);
         stateManager.attach(new MenuState());
 
     }

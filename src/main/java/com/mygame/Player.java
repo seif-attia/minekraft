@@ -7,7 +7,7 @@ public class Player {
     public byte selectedBlockId = 1;
 
     // Physical state
-    public Vector3f position = new Vector3f(8, 150, 8);
+    public Vector3f position = new Vector3f(8, 250, 8);
     public Vector3f velocity = new Vector3f(0, 0, 0);
 
     // Hitbox dimensions (Voxel standard: 0.6 wide, 1.8 tall)

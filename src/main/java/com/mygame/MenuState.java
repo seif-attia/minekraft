@@ -74,6 +74,10 @@ public class MenuState extends BaseAppState {
        
         // 4. Button: Settings (Placeholder)
         Button settingsBtn = myWindow.addChild(new Button("Settings"));
+        settingsBtn.addClickCommands(source -> {
+            getStateManager().detach(this); // Remove Main Menu
+            getStateManager().attach(new SettingsState()); // Attach Settings Screen
+        });
         
         // 5. Button: Credits (Placeholder)
         Button creditsBtn = myWindow.addChild(new Button("Credits"));

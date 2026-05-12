@@ -7,7 +7,8 @@ import java.io.File;
 import java.io.IOException;
 
 public class Main extends SimpleApplication {
-
+    public static boolean fpsflag = false;
+    public static boolean statsflag = false;
     public static void main(String[] args) {
         Main app = new Main();
 
@@ -15,8 +16,6 @@ public class Main extends SimpleApplication {
         settings.setTitle("MineKraft");
         settings.setSamples(16);
         try {
-        // This looks for your icon in the assets folder
-        // Use a 256x256 PNG for the best result
         settings.setIcons(new java.awt.image.BufferedImage[]{
             javax.imageio.ImageIO.read(new File("assets/Textures/App Icon 1.png"))
         });
@@ -24,8 +23,6 @@ public class Main extends SimpleApplication {
             System.err.println("Could not load window icon: " + e.getMessage());
         }
         settings.setResolution(1280, 768);
-//        settings.setResolution(1920, 1080);
-//        settings.setFullscreen(true);
         settings.setVSync(false);
         settings.setFrameRate(-1);
         settings.setBitsPerPixel(32);
@@ -39,8 +36,8 @@ public class Main extends SimpleApplication {
     @Override
     public void simpleInitApp() {
 
-        setDisplayFps(true);
-        setDisplayStatView(true);
+        setDisplayFps(false);
+        setDisplayStatView(false);
         stateManager.attach(new MenuState());
 
     }

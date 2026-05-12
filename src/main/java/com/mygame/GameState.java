@@ -52,6 +52,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     private InputManager inputManager;
     private PhysicsEngine physicsEngine;
     private SelectionManager selectionManager;
+    private Node guiNode;
 
     // Sun
     private Geometry sunGeom;
@@ -71,6 +72,9 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     private RaycastManager raycastManager;
     private FlyByCamera flyCam;
 
+    private HotbarManager hotbarManager;
+    private int currentSlotIndex = 0;
+
     @Override
     protected void initialize(Application app) {
         // Cast to SimpleApplication to access rootNode, assetManager, etc.
@@ -82,12 +86,13 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         this.assetManager = this.app.getAssetManager();
         this.inputManager = this.app.getInputManager();
         this.flyCam = this.app.getFlyByCamera();
+        this.guiNode = this.app.getGuiNode();
 
         // Initialize the world logic moved from Main.simpleInitApp
         myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
 
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
-        
+
         if (Main.hideMinimap) {
             minimap.cleanup();
             minimap = null;
@@ -105,6 +110,8 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         initKeys();
 
         initCrosshair();
+
+        hotbarManager = new HotbarManager(this.guiNode, assetManager, cam.getWidth());
 
         // Disable the default flycam so our Player.java rotation math takes over
         flyCam.setEnabled(false);
@@ -305,44 +312,148 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
-        
+
         if (!isEnabled()) return;
             
         if (name.equals("PauseGame") && isPressed) {
         getStateManager().attach(new PauseState());
         return; 
         }
-        
+
+        if (name.equals("ScrollUp")) {
+            if (!player.isGhostMode) {
+                currentSlotIndex--;
+                if (currentSlotIndex < 0) {
+                    currentSlotIndex = 8; // Wrap to end
+                }
+                updateSelectedSlot(currentSlotIndex);
+            }
+        } else if (name.equals("ScrollDown")) {
+            if (!player.isGhostMode) {
+                currentSlotIndex++;
+                if (currentSlotIndex > 8) {
+                    currentSlotIndex = 0; // Wrap to start
+                }
+                updateSelectedSlot(currentSlotIndex);
+            }
+        } else if (isPressed && name.startsWith("Slot")) {
+            if (!player.isGhostMode) {
+                int slotNumber = Integer.parseInt(name.replace("Slot", ""));
+                int slotIndex = slotNumber - 1; // 0 to 8 for the UI
+
+                // Map the slot number to your specific Block IDs
+                switch (slotNumber) {
+                    case 1:
+                        player.selectedBlockId = 1;
+                        break;  // Grass
+                    case 2:
+                        player.selectedBlockId = 3;
+                        break;  // Dirt
+                    case 3:
+                        player.selectedBlockId = 4;
+                        break;  // Stone
+                    case 4:
+                        player.selectedBlockId = 13;
+                        break; // Planks
+                    case 5:
+                        player.selectedBlockId = 12;
+                        break; // Glass
+                    case 6:
+                        player.selectedBlockId = 11;
+                        break; // Bricks
+                    case 7:
+                        player.selectedBlockId = 7;
+                        break;  // Wood
+                    case 8:
+                        player.selectedBlockId = 6;
+                        break;  // Snow
+                    case 9:
+                        player.selectedBlockId = 9;
+                        break;  // Leaves
+                }
+                this.currentSlotIndex = slotIndex;
+
+                updateSelectedSlot(slotIndex);
+            }
+        }
         if (name.equals("Forward")) {
             movementManager.setForward(isPressed);
-        } else if (name.equals("Back")) {
+        }
+        if (name.equals("Back")) {
             movementManager.setBack(isPressed);
-        } else if (name.equals("Left")) {
+        }
+        if (name.equals("Left")) {
             movementManager.setLeft(isPressed);
-        } else if (name.equals("Right")) {
+        }
+        if (name.equals("Right")) {
             movementManager.setRight(isPressed);
-        } else if (name.equals("Jump")) {
+        }
+        if (name.equals("Jump")) {
             player.wantsToJump = isPressed;
-        } else if (name.equals("ToggleGhost") && isPressed) {
+        }
+        if (name.equals("ToggleGhost") && isPressed) {
             player.toggleGhostMode();
             System.out.println("Ghost Mode: " + (player.isGhostMode ? "ON" : "OFF"));
-        } // Raycasting Actions
-        else if (name.equals("Shoot") && isPressed) {
+        }
+        // Raycasting Actions
+        if (name.equals("Delete") && isPressed) {
             if (!player.isGhostMode) {
                 RaycastResult res = raycastManager.currentResult;
                 if (res != null) {
                     myWorld.setBlockGlobal((int) res.blockPos.x, (int) res.blockPos.y, (int) res.blockPos.z, (byte) 0);
                 }
             }
-        } else if (name.equals("Delete") && isPressed) {
+        } else if (name.equals("Place") && isPressed) {
             if (!player.isGhostMode) {
                 RaycastResult res = raycastManager.currentResult;
                 if (res != null) {
-                    // Use the 'adjacent' position to place the new block next to the one hit
-                    myWorld.setBlockGlobal((int) res.adjacent.x, (int) res.adjacent.y, (int) res.adjacent.z, (byte) 1);
+                    int targetX = (int) res.adjacent.x;
+                    int targetY = (int) res.adjacent.y;
+                    int targetZ = (int) res.adjacent.z;
+
+                    if (!player.intersectsVoxel(targetX, targetY, targetZ)) {
+                        // THE FIX: Use the selected ID instead of a hardcoded 1
+                        myWorld.setBlockGlobal(targetX, targetY, targetZ, player.selectedBlockId);
+                    }
                 }
             }
         }
+    }
+
+    private void updateSelectedSlot(int index) {
+        // 1. Map the index (0-8) back to your specific Block IDs
+        switch (index) {
+            case 0:
+                player.selectedBlockId = 1;
+                break;  // 1: Grass
+            case 1:
+                player.selectedBlockId = 3;
+                break;  // 2: Dirt
+            case 2:
+                player.selectedBlockId = 4;
+                break;  // 3: Stone
+            case 3:
+                player.selectedBlockId = 13;
+                break; // 4: Planks
+            case 4:
+                player.selectedBlockId = 12;
+                break; // 5: Glass
+            case 5:
+                player.selectedBlockId = 11;
+                break; // 6: Bricks
+            case 6:
+                player.selectedBlockId = 7;
+                break;  // 7: Wood
+            case 7:
+                player.selectedBlockId = 6;
+                break;  // 8: Snow
+            case 8:
+                player.selectedBlockId = 9;
+                break;  // 9: Leaves
+        }
+
+        // 2. Move the visual highlight box in the UI
+        hotbarManager.updateHighlight(index);
     }
 
     @Override
@@ -422,15 +533,25 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     }
 
     private void initKeys() {
+
+        for (int i = 1; i <= 9; i++) {
+            int keyCode = KeyInput.KEY_1 + (i - 1);
+            inputManager.addMapping("Slot" + i, new KeyTrigger(keyCode));
+            inputManager.addListener(this, "Slot" + i);
+        }
+
         inputManager.addMapping("Forward", new KeyTrigger(KeyInput.KEY_W));
         inputManager.addMapping("Back", new KeyTrigger(KeyInput.KEY_S));
         inputManager.addMapping("Left", new KeyTrigger(KeyInput.KEY_A));
         inputManager.addMapping("Right", new KeyTrigger(KeyInput.KEY_D));
         inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
         inputManager.addMapping("ToggleGhost", new KeyTrigger(KeyInput.KEY_C));
-        inputManager.addMapping("Shoot", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
-        inputManager.addMapping("Delete", new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
+
+    
         inputManager.addMapping("PauseGame", new KeyTrigger(KeyInput.KEY_ESCAPE));
+        inputManager.addMapping("Delete", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        inputManager.addMapping("Place", new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
+
 
         inputManager.addMapping("MouseLeft", new MouseAxisTrigger(MouseInput.AXIS_X, true));
         inputManager.addMapping("MouseRight", new MouseAxisTrigger(MouseInput.AXIS_X, false));
@@ -440,7 +561,14 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         inputManager.addMapping("SpeedUp", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, false));
         inputManager.addMapping("SpeedDown", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, true));
 
-        inputManager.addListener(this, "Shoot", "Delete", "Forward", "Back", "Left", "Right", "Jump", "ToggleGhost", "PauseGame");
+
+        inputManager.addListener(this, "Place", "Delete", "Forward", "Back", "Left", "Right", "Jump", "ToggleGhost", "PauseGame");
+      
         inputManager.addListener(this, "MouseLeft", "MouseRight", "MouseUp", "MouseDown", "SpeedUp", "SpeedDown");
+        // scrolling for hotbar
+        inputManager.addMapping("ScrollUp", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, false));
+        inputManager.addMapping("ScrollDown", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, true));
+
+        inputManager.addListener(this, "ScrollUp", "ScrollDown");
     }
 }

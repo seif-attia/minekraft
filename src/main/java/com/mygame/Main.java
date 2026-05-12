@@ -7,8 +7,10 @@ import java.io.File;
 import java.io.IOException;
 
 public class Main extends SimpleApplication {
+
     public static boolean fpsflag = false;
     public static boolean statsflag = false;
+
     public static boolean hideMinimap = false;
     public static void main(String[] args) {
         Main app = new Main();
@@ -17,9 +19,9 @@ public class Main extends SimpleApplication {
         settings.setTitle("MineKraft");
         settings.setSamples(16);
         try {
-        settings.setIcons(new java.awt.image.BufferedImage[]{
-            javax.imageio.ImageIO.read(new File("assets/Textures/App Icon 1.png"))
-        });
+            settings.setIcons(new java.awt.image.BufferedImage[]{
+                javax.imageio.ImageIO.read(new File("assets/Textures/App Icon 1.png"))
+            });
         } catch (IOException e) {
             System.err.println("Could not load window icon: " + e.getMessage());
         }
@@ -38,7 +40,9 @@ public class Main extends SimpleApplication {
     @Override
     public void simpleInitApp() {
 
+
         getInputManager().deleteMapping(SimpleApplication.INPUT_MAPPING_EXIT);
+
         cam.setFrustumPerspective(90f, (float) cam.getWidth() / cam.getHeight(), 0.01f, 1000f);
         setDisplayFps(false);
         setDisplayStatView(false);

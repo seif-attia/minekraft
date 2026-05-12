@@ -110,7 +110,7 @@ public class WorldManager {
         // ID 11: Bricks
         blockMaterials.put((byte) 11, createRepeatingMaterial("Textures/bricks.png", false));
         // ID 12: glass
-        blockMaterials.put((byte) 12, createRepeatingMaterial("Textures/glass.png", false));
+        blockMaterials.put((byte) 12, createRepeatingMaterial("Textures/glass.png", true));
         // ID 13: Planks
         blockMaterials.put((byte) 13, createRepeatingMaterial("Textures/planks.png", false));
 

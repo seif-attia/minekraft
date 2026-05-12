@@ -38,7 +38,7 @@ public class Main extends SimpleApplication {
     @Override
     public void simpleInitApp() {
 
-
+        getInputManager().deleteMapping(SimpleApplication.INPUT_MAPPING_EXIT);
         cam.setFrustumPerspective(90f, (float) cam.getWidth() / cam.getHeight(), 0.01f, 1000f);
         setDisplayFps(false);
         setDisplayStatView(false);

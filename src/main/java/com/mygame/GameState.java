@@ -365,12 +365,16 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
 
     @Override
     protected void onEnable() {
-        // Logic for when the game is unpaused or shown
+        SimpleApplication app = (SimpleApplication) getApplication();
+        app.setDisplayFps(Main.fpsflag);
+        app.setDisplayStatView(Main.statsflag);
     }
 
     @Override
     protected void onDisable() {
-        // Logic for when the game is paused or hidden
+        SimpleApplication app = (SimpleApplication) getApplication();
+        app.setDisplayFps(false);
+        app.setDisplayStatView(false);
     }
 
     private void initCrosshair() {

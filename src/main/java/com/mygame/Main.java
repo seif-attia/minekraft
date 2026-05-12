@@ -3,18 +3,26 @@ package com.mygame;
 import com.jme3.app.SimpleApplication;
 import com.jme3.renderer.RenderManager;
 import com.jme3.system.AppSettings;
+import java.io.File;
+import java.io.IOException;
 
 public class Main extends SimpleApplication {
-
+    public static boolean fpsflag = false;
+    public static boolean statsflag = false;
     public static void main(String[] args) {
         Main app = new Main();
 
         AppSettings settings = new AppSettings(true);
         settings.setTitle("MineKraft");
         settings.setSamples(16);
+        try {
+        settings.setIcons(new java.awt.image.BufferedImage[]{
+            javax.imageio.ImageIO.read(new File("assets/Textures/App Icon 1.png"))
+        });
+        } catch (IOException e) {
+            System.err.println("Could not load window icon: " + e.getMessage());
+        }
         settings.setResolution(1280, 768);
-//        settings.setResolution(1920, 1080);
-//        settings.setFullscreen(true);
         settings.setVSync(false);
         settings.setFrameRate(-1);
         settings.setBitsPerPixel(32);
@@ -28,6 +36,7 @@ public class Main extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
+
 
         cam.setFrustumPerspective(90f, (float) cam.getWidth() / cam.getHeight(), 0.01f, 1000f);
         setDisplayFps(true);

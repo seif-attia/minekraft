@@ -7,14 +7,20 @@ import com.jme3.asset.AssetManager;
 import com.jme3.effect.ParticleEmitter;
 import com.jme3.effect.ParticleMesh;
 import com.jme3.effect.shapes.EmitterBoxShape;
+import com.jme3.input.FlyByCamera;
 import com.jme3.input.InputManager;
 import com.jme3.input.KeyInput;
+import com.jme3.input.MouseInput;
 import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.controls.KeyTrigger;
+import com.jme3.input.controls.MouseAxisTrigger;
+import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.Quaternion;
 import com.jme3.renderer.RenderManager;
 import com.jme3.math.Vector3f;
 import com.jme3.post.FilterPostProcessor;
@@ -32,8 +38,15 @@ import com.jme3.shadow.DirectionalLightShadowRenderer;
 import com.jme3.shadow.EdgeFilteringMode;
 import com.jme3.shadow.DirectionalLightShadowFilter;
 import java.util.HashSet;
+import com.jme3.bullet.BulletAppState;
+import com.jme3.bullet.control.CharacterControl;
+import com.jme3.bullet.collision.shapes.CapsuleCollisionShape;
 
-public class GameState extends BaseAppState {
+public class GameState extends BaseAppState implements ActionListener, AnalogListener {
+
+    private BulletAppState bulletAppState;
+    private Node playerNode;
+    private CharacterControl playerControl;
 
     private SimpleApplication app;
     private WorldManager myWorld;
@@ -58,6 +71,12 @@ public class GameState extends BaseAppState {
     private LightScatteringFilter godRays;
     private DirectionalLight sun;
 
+    private Player player;
+    private MovementManager movementManager;
+    private PhysicsEngine physicsEngine;
+    private RaycastManager raycastManager;
+    private FlyByCamera flyCam;
+
     @Override
     protected void initialize(Application app) {
         // Cast to SimpleApplication to access rootNode, assetManager, etc.
@@ -68,12 +87,52 @@ public class GameState extends BaseAppState {
         this.viewPort = this.app.getViewPort();
         this.assetManager = this.app.getAssetManager();
         this.inputManager = this.app.getInputManager();
+        this.flyCam = this.app.getFlyByCamera();
+
+        // Init physics engine
+        bulletAppState = new BulletAppState();
+        app.getStateManager().attach(bulletAppState);
+        // Optional: for debugging physics
+        //bulletAppState.setDebugEnabled(true);
 
         // Initialize the world logic moved from Main.simpleInitApp
-        myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
+        myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager(), bulletAppState.getPhysicsSpace());
 
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
 
+        player = new Player();
+
+        playerNode = new Node("PlayerNode");
+        CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(0.3f, 1.2f, 1);
+
+        // The 0.5f is the "Step Height". This automatically lets you walk up slabs or 
+        // tiny bumps in the terrain without getting stuck!
+        playerControl = new CharacterControl(capsuleShape, 0.5f);
+
+        // Kinematic bodies don't use Mass or Forces. They use absolute velocities.
+        playerControl.setGravity(35f);
+        playerControl.setJumpSpeed(10f); // Absolute takeoff velocity in m/s
+        playerControl.setFallSpeed(60f); // Maximum falling speed (Terminal Velocity)
+
+        playerNode.addControl(playerControl);
+        bulletAppState.getPhysicsSpace().add(playerControl);
+        rootNode.attachChild(playerNode);
+        playerControl.setPhysicsLocation(new Vector3f(8, 250f, 8));
+
+        //physics and raycast manager init
+        // 1. Initialize Managers
+        movementManager = new MovementManager(player);
+        physicsEngine = new PhysicsEngine(playerControl, movementManager);
+        raycastManager = new RaycastManager(cam, rootNode, assetManager, myWorld);
+
+        // 2. Setup Inputs 
+        initKeys();
+
+        initCrosshair();
+
+        // Disable the default flycam so our Player.java rotation math takes over
+        flyCam.setEnabled(false);
+        app.getInputManager().setCursorVisible(false);
         // Setup camera
         cam.setLocation(new Vector3f(-10, 200, -10));
         cam.lookAt(new Vector3f(24, 0, 24), Vector3f.UNIT_Y);
@@ -214,6 +273,21 @@ public class GameState extends BaseAppState {
 
     @Override
     public void update(float tpf) {
+
+        // --- 1. THE MISSING PHYSICS AND MOVEMENT UPDATES ---
+        movementManager.updateMovement(tpf);
+        physicsEngine.updatePhysics(tpf);
+        raycastManager.update(tpf);
+
+        // --- 2. SYNC CAMERA TO PLAYER ---
+        // Move the camera to the player's body position + 1.6f units up for eye level
+        cam.setLocation((playerNode.getLocalTranslation().add(0, 1.6f, 0)));
+
+        // Rotate the camera based on mouse movement (pitch and yaw)
+        Quaternion q = new Quaternion();
+        q.fromAngles(player.pitch, player.yaw, 0);
+        cam.setRotation(q);
+
         // The game loop logic moved from Main.simpleUpdate
         if (myWorld != null) {
             myWorld.update(cam.getLocation());
@@ -225,6 +299,14 @@ public class GameState extends BaseAppState {
 
         if (ambientDust != null) {
             ambientDust.setLocalTranslation(cam.getLocation());
+        }
+
+        if (playerNode.getLocalTranslation().y < -10f) {
+            System.out.println("Fell into the void! Respawning...");
+
+            // In Bullet/Minie, you MUST use warp() to teleport physical objects. 
+            // Setting the translation manually will break the physics.
+            playerControl.setPhysicsLocation(new Vector3f(cam.getLocation().x, 300f, cam.getLocation().z));
         }
 
         // Make the Sun follow the player
@@ -254,11 +336,57 @@ public class GameState extends BaseAppState {
     }
 
     @Override
+    public void onAction(String name, boolean isPressed, float tpf) {
+        if (name.equals("Forward")) {
+            movementManager.setForward(isPressed);
+        } else if (name.equals("Back")) {
+            movementManager.setBack(isPressed);
+        } else if (name.equals("Left")) {
+            movementManager.setLeft(isPressed);
+        } else if (name.equals("Right")) {
+            movementManager.setRight(isPressed);
+        } else if (name.equals("Jump") && isPressed) {
+            playerControl.jump();
+        } else if (name.equals("ToggleGhost") && isPressed) {
+            player.toggleGhostMode();
+        } // Raycasting Actions
+        else if (name.equals("Shoot") && isPressed) {
+            // Let's assume ID 1 (Grass) for now, or you can make a selector!
+            raycastManager.placeBlock((byte) 1);
+        } else if (name.equals("Delete") && isPressed) {
+            raycastManager.deleteBlock();
+        }
+    }
+
+    @Override
+    public void onAnalog(String name, float value, float tpf) {
+        if (name.equals("MouseRight")) {
+            player.rotate(-value, 0);
+        } else if (name.equals("MouseLeft")) {
+            player.rotate(value, 0);
+        } else if (name.equals("MouseUp")) {
+            player.rotate(0, value);
+        } else if (name.equals("MouseDown")) {
+            player.rotate(0, -value);
+        } else if (name.equals("SpeedUp")) {
+            player.adjustSpeed(1.0f);
+        } else if (name.equals("SpeedDown")) {
+            player.adjustSpeed(-1.0f);
+        }
+    }
+
+    @Override
     protected void cleanup(Application app) {
         // Clean up the world when this state is detached
         if (myWorld != null) {
             myWorld.destroy();
         }
+
+        // Remove listeners so they don't leak into other game states
+        if (inputManager != null) {
+            inputManager.removeListener(this);
+        }
+
     }
 
     @Override
@@ -269,5 +397,48 @@ public class GameState extends BaseAppState {
     @Override
     protected void onDisable() {
         // Logic for when the game is paused or hidden
+    }
+
+    private void initCrosshair() {
+        // Load the default font from the asset manager
+        com.jme3.font.BitmapFont guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
+        com.jme3.font.BitmapText ch = new com.jme3.font.BitmapText(guiFont, false);
+
+        // Scale it up slightly and set the classic + symbol
+        ch.setSize(guiFont.getCharSet().getRenderedSize() * 2);
+        ch.setText("+");
+
+        // Calculate the exact center of the screen based on current resolution
+        float width = app.getContext().getSettings().getWidth();
+        float height = app.getContext().getSettings().getHeight();
+
+        float x = (width / 2) - (ch.getLineWidth() / 2);
+        float y = (height / 2) + (ch.getLineHeight() / 2);
+        ch.setLocalTranslation(x, y, 0);
+
+        // Attach to the GUI node so it renders on top of everything
+        app.getGuiNode().attachChild(ch);
+    }
+
+    private void initKeys() {
+        inputManager.addMapping("Forward", new KeyTrigger(KeyInput.KEY_W));
+        inputManager.addMapping("Back", new KeyTrigger(KeyInput.KEY_S));
+        inputManager.addMapping("Left", new KeyTrigger(KeyInput.KEY_A));
+        inputManager.addMapping("Right", new KeyTrigger(KeyInput.KEY_D));
+        inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
+        inputManager.addMapping("ToggleGhost", new KeyTrigger(KeyInput.KEY_C));
+        inputManager.addMapping("Shoot", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        inputManager.addMapping("Delete", new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
+
+        inputManager.addMapping("MouseLeft", new MouseAxisTrigger(MouseInput.AXIS_X, true));
+        inputManager.addMapping("MouseRight", new MouseAxisTrigger(MouseInput.AXIS_X, false));
+        inputManager.addMapping("MouseUp", new MouseAxisTrigger(MouseInput.AXIS_Y, true));
+        inputManager.addMapping("MouseDown", new MouseAxisTrigger(MouseInput.AXIS_Y, false));
+
+        inputManager.addMapping("SpeedUp", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, false));
+        inputManager.addMapping("SpeedDown", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, true));
+
+        inputManager.addListener(this, "Shoot", "Delete", "Forward", "Back", "Left", "Right", "Jump", "ToggleGhost");
+        inputManager.addListener(this, "MouseLeft", "MouseRight", "MouseUp", "MouseDown", "SpeedUp", "SpeedDown");
     }
 }

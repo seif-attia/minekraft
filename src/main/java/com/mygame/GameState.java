@@ -44,6 +44,7 @@ public class GameState extends BaseAppState {
     private ViewPort viewPort;
     private AssetManager assetManager;
     private InputManager inputManager;
+    private String worldName; // our world name
 
     // Sun
     private Geometry sunGeom;
@@ -58,6 +59,11 @@ public class GameState extends BaseAppState {
     private LightScatteringFilter godRays;
     private DirectionalLight sun;
 
+    
+    public GameState(String worldName) {
+        this.worldName = worldName;
+    }
+    
     @Override
     protected void initialize(Application app) {
         // Cast to SimpleApplication to access rootNode, assetManager, etc.
@@ -70,8 +76,11 @@ public class GameState extends BaseAppState {
         this.inputManager = this.app.getInputManager();
 
         // Initialize the world logic moved from Main.simpleInitApp
-        myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
+        //myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
 
+        //aaa > passing the world name to the world manager
+        myWorld = new WorldManager(this.app, rootNode, assetManager, worldName);
+        
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
 
         // Setup camera
@@ -259,6 +268,9 @@ public class GameState extends BaseAppState {
         if (myWorld != null) {
             myWorld.destroy();
         }
+        //aaa > assure no memory leak happens on using filters
+        rootNode.detachChildNamed("WorldNode");
+        app.getViewPort().getProcessors().clear();
     }
 
     @Override

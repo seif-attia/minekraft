@@ -481,16 +481,29 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
 
     @Override
     protected void cleanup(Application app) {
-        // Clean up the world when this state is detached
-        if (myWorld != null) {
-            myWorld.destroy();
+        if (crosshair != null) {
+            crosshair.removeFromParent();
+            crosshair = null;
         }
 
-        // Remove listeners so they don't leak into other game states
+        if (hotbarManager != null) {
+            hotbarManager.cleanup();
+            hotbarManager = null;
+        }
+
+        if (minimap != null) {
+            minimap.cleanup();
+            minimap = null;
+        }
+
+        if (myWorld != null) {
+            myWorld.destroy();
+            myWorld = null;
+        }
+
         if (inputManager != null) {
             inputManager.removeListener(this);
         }
-
     }
 
     @Override

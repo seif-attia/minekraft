@@ -9,6 +9,7 @@ import java.io.IOException;
 public class Main extends SimpleApplication {
     public static boolean fpsflag = false;
     public static boolean statsflag = false;
+    public static boolean hideMinimap = false;
     public static void main(String[] args) {
         Main app = new Main();
 

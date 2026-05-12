@@ -87,6 +87,11 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
 
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
+        
+        if (Main.hideMinimap) {
+            minimap.cleanup();
+            minimap = null;
+        }
 
         //physics and raycast manager init
         // 1. Initialize Managers

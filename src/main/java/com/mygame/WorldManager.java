@@ -22,10 +22,6 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.queue.RenderQueue;
 import java.util.LinkedList;
 import java.util.Queue;
-import com.jme3.bullet.collision.shapes.MeshCollisionShape;
-import com.jme3.bullet.control.RigidBodyControl;
-import com.jme3.bullet.PhysicsSpace;
-import com.jme3.scene.Spatial;
 
 /**
  * Manages the infinite voxel world using a sliding window algorithm.
@@ -35,8 +31,7 @@ import com.jme3.scene.Spatial;
 public class WorldManager {
 
     private boolean isWireframe = false;
-    private PhysicsSpace physicsSpace;
-    private int renderDistance = 20; // Loads a grid of chunks around the player, so its nxn + 1
+    private int renderDistance = 14; // Loads a grid of chunks around the player, so its nxn + 1
 
     private Map<ChunkPos, Chunk> activeChunks = new ConcurrentHashMap<>();
     private Map<ChunkPos, Node> activeGeometries = new HashMap<>();
@@ -58,9 +53,8 @@ public class WorldManager {
     private AssetManager assetManager;
     private Map<Byte, Material> blockMaterials = new HashMap<>();
 
-    public WorldManager(Application app, Node rootNode, AssetManager assetManager, PhysicsSpace physicsSpace) {
+    public WorldManager(Application app, Node rootNode, AssetManager assetManager) {
         this.app = app;
-        this.physicsSpace = physicsSpace;
 
         // Create a thread pool with all available threads in the computer
         int cores = Runtime.getRuntime().availableProcessors();
@@ -242,8 +236,6 @@ public class WorldManager {
                 worldNode.attachChild(chunkNode);
                 activeGeometries.put(pos, chunkNode);
 
-                applyPhysics(chunkNode);
-
                 // Notify neighbors that a new chunk was created to recalculate their meshes and cull hidden faces
                 ChunkPos north = new ChunkPos(pos.x(), pos.z() + 1);
                 if (activeGeometries.containsKey(north)) {
@@ -275,7 +267,6 @@ public class WorldManager {
         // Find the visual object, detach it from the scene, and remove it from the map
         Node chunkNode = activeGeometries.remove(pos);
         if (chunkNode != null) {
-            removePhysics(chunkNode);
             chunkNode.removeFromParent(); // This deletes it from the screen
         }
     }
@@ -346,7 +337,6 @@ public class WorldManager {
                 // Find the OLD Node and delete it from the screen
                 Node oldNode = activeGeometries.remove(pos);
                 if (oldNode != null) {
-                    removePhysics(oldNode);
                     oldNode.removeFromParent();
                 }
 
@@ -356,45 +346,8 @@ public class WorldManager {
 
                 worldNode.attachChild(updatedMesh);
                 activeGeometries.put(pos, updatedMesh);
-                applyPhysics(updatedMesh);
             });
         });
-    }
-
-    private void applyPhysics(Node chunkNode) {
-        for (com.jme3.scene.Spatial child : chunkNode.getChildren()) {
-            if (child instanceof Geometry) {
-                Geometry geom = (Geometry) child;
-                String name = geom.getName();
-
-                // If the name is null, or it's water/grass, skip physics!
-                if (name == null || name.contains("_5") || name.contains("_10")) {
-                    continue;
-                }
-
-                // Apply solid physics to everything else
-                com.jme3.bullet.collision.shapes.MeshCollisionShape shape
-                        = new com.jme3.bullet.collision.shapes.MeshCollisionShape(geom.getMesh());
-
-                RigidBodyControl physicsControl = new RigidBodyControl(shape, 0.0f);
-
-                geom.addControl(physicsControl);
-                physicsSpace.add(physicsControl);
-            }
-        }
-    }
-
-    /**
-     * Cleans up the physics engine to prevent invisible walls and memory leaks.
-     */
-    private void removePhysics(Node chunkNode) {
-        for (Spatial child : chunkNode.getChildren()) {
-            RigidBodyControl control = child.getControl(RigidBodyControl.class);
-            if (control != null) {
-                physicsSpace.remove(control);
-                child.removeControl(control);
-            }
-        }
     }
 
     public Node getWorldNode() {

@@ -38,15 +38,8 @@ import com.jme3.shadow.DirectionalLightShadowRenderer;
 import com.jme3.shadow.EdgeFilteringMode;
 import com.jme3.shadow.DirectionalLightShadowFilter;
 import java.util.HashSet;
-import com.jme3.bullet.BulletAppState;
-import com.jme3.bullet.control.CharacterControl;
-import com.jme3.bullet.collision.shapes.CapsuleCollisionShape;
 
 public class GameState extends BaseAppState implements ActionListener, AnalogListener {
-
-    private BulletAppState bulletAppState;
-    private Node playerNode;
-    private CharacterControl playerControl;
 
     private SimpleApplication app;
     private WorldManager myWorld;
@@ -57,6 +50,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     private ViewPort viewPort;
     private AssetManager assetManager;
     private InputManager inputManager;
+    private PhysicsEngine physicsEngine;
 
     // Sun
     private Geometry sunGeom;
@@ -73,7 +67,6 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
 
     private Player player;
     private MovementManager movementManager;
-    private PhysicsEngine physicsEngine;
     private RaycastManager raycastManager;
     private FlyByCamera flyCam;
 
@@ -89,41 +82,17 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         this.inputManager = this.app.getInputManager();
         this.flyCam = this.app.getFlyByCamera();
 
-        // Init physics engine
-        bulletAppState = new BulletAppState();
-        app.getStateManager().attach(bulletAppState);
-        // Optional: for debugging physics
-        //bulletAppState.setDebugEnabled(true);
-
         // Initialize the world logic moved from Main.simpleInitApp
-        myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager(), bulletAppState.getPhysicsSpace());
+        myWorld = new WorldManager(this.app, rootNode, this.app.getAssetManager());
 
         minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
 
-        player = new Player();
-
-        playerNode = new Node("PlayerNode");
-        CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(0.3f, 1.2f, 1);
-
-        // The 0.5f is the "Step Height". This automatically lets you walk up slabs or 
-        // tiny bumps in the terrain without getting stuck!
-        playerControl = new CharacterControl(capsuleShape, 0.5f);
-
-        // Kinematic bodies don't use Mass or Forces. They use absolute velocities.
-        playerControl.setGravity(35f);
-        playerControl.setJumpSpeed(10f); // Absolute takeoff velocity in m/s
-        playerControl.setFallSpeed(60f); // Maximum falling speed (Terminal Velocity)
-
-        playerNode.addControl(playerControl);
-        bulletAppState.getPhysicsSpace().add(playerControl);
-        rootNode.attachChild(playerNode);
-        playerControl.setPhysicsLocation(new Vector3f(8, 250f, 8));
-
         //physics and raycast manager init
         // 1. Initialize Managers
+        player = new Player();
         movementManager = new MovementManager(player);
-        physicsEngine = new PhysicsEngine(playerControl, movementManager);
-        raycastManager = new RaycastManager(cam, rootNode, assetManager, myWorld);
+        physicsEngine = new PhysicsEngine(player, myWorld, movementManager);
+        raycastManager = new RaycastManager(cam, myWorld);
 
         // 2. Setup Inputs 
         initKeys();
@@ -205,8 +174,8 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         // 3. THE FOG FILTER
         FogFilter fog = new FogFilter();
         fog.setFogColor(new ColorRGBA(0.5f, 0.6f, 0.8f, 1.0f));
-        fog.setFogDistance(150);
-        fog.setFogDensity(1f);
+        fog.setFogDistance(300);
+        fog.setFogDensity(0.8f);
 
         fpp.addFilter(fog);
 
@@ -275,13 +244,12 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     public void update(float tpf) {
 
         // --- 1. THE MISSING PHYSICS AND MOVEMENT UPDATES ---
-        movementManager.updateMovement(tpf);
-        physicsEngine.updatePhysics(tpf);
+        physicsEngine.update(tpf);
         raycastManager.update(tpf);
 
         // --- 2. SYNC CAMERA TO PLAYER ---
         // Move the camera to the player's body position + 1.6f units up for eye level
-        cam.setLocation((playerNode.getLocalTranslation().add(0, 1.6f, 0)));
+        cam.setLocation(player.position.add(0, 1.6f, 0));
 
         // Rotate the camera based on mouse movement (pitch and yaw)
         Quaternion q = new Quaternion();
@@ -299,14 +267,6 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
 
         if (ambientDust != null) {
             ambientDust.setLocalTranslation(cam.getLocation());
-        }
-
-        if (playerNode.getLocalTranslation().y < -10f) {
-            System.out.println("Fell into the void! Respawning...");
-
-            // In Bullet/Minie, you MUST use warp() to teleport physical objects. 
-            // Setting the translation manually will break the physics.
-            playerControl.setPhysicsLocation(new Vector3f(cam.getLocation().x, 300f, cam.getLocation().z));
         }
 
         // Make the Sun follow the player
@@ -346,15 +306,15 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         } else if (name.equals("Right")) {
             movementManager.setRight(isPressed);
         } else if (name.equals("Jump") && isPressed) {
-            playerControl.jump();
+            player.jump();
         } else if (name.equals("ToggleGhost") && isPressed) {
-            player.toggleGhostMode();
+            // player.toggleGhostMode();
         } // Raycasting Actions
         else if (name.equals("Shoot") && isPressed) {
             // Let's assume ID 1 (Grass) for now, or you can make a selector!
-            raycastManager.placeBlock((byte) 1);
+            //raycastManager.placeBlock((byte) 1);
         } else if (name.equals("Delete") && isPressed) {
-            raycastManager.deleteBlock();
+            //raycastManager.deleteBlock();
         }
     }
 
@@ -369,9 +329,9 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         } else if (name.equals("MouseDown")) {
             player.rotate(0, -value);
         } else if (name.equals("SpeedUp")) {
-            player.adjustSpeed(1.0f);
+            //player.adjustSpeed(1.0f);
         } else if (name.equals("SpeedDown")) {
-            player.adjustSpeed(-1.0f);
+            //player.adjustSpeed(-1.0f);
         }
     }
 

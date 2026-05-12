@@ -1,112 +1,93 @@
 package com.mygame;
 
-import com.jme3.asset.AssetManager;
-import com.jme3.material.Material;
-import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Camera;
-import com.jme3.scene.Geometry;
-import com.jme3.scene.Node;
-import com.jme3.scene.shape.Box;
 
 public class RaycastManager {
 
     private Camera cam;
-    private Node rootNode;
-    private AssetManager assetManager;
-    private WorldManager worldManager;
-    private Geometry selectionOutline;
+    private WorldManager world;
+    private float reach = 5.0f; // How many blocks away can you reach?
 
-    // How far the player can reach
-    private final float REACH = 6.0f;
-    private final float STEP_SIZE = 0.05f;
+    public RaycastResult currentResult;
 
-    // Internal tracking for where we are aiming
-    private Vector3f targetBlock = null;
-    private Vector3f buildBlock = null;
-
-    public RaycastManager(Camera cam, Node rootNode, AssetManager assetManager, WorldManager worldManager) {
+    public RaycastManager(Camera cam, WorldManager world) {
         this.cam = cam;
-        this.rootNode = rootNode;
-        this.assetManager = assetManager;
-        this.worldManager = worldManager;
-        initOutline();
-    }
-
-    private void initOutline() {
-        // Perfectly wraps a 1x1 voxel block
-        Box box = new Box(0.505f, 0.505f, 0.505f);
-        selectionOutline = new Geometry("SelectionOutline", box);
-        Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mat.getAdditionalRenderState().setWireframe(true);
-        mat.setColor("Color", ColorRGBA.Black);
-        selectionOutline.setMaterial(mat);
+        this.world = world;
     }
 
     public void update(float tpf) {
-        calculateVoxelRaycast();
-
-        if (targetBlock != null) {
-            // Blocks are centered exactly on integers. We snap the outline there.
-            selectionOutline.setLocalTranslation(targetBlock.x, targetBlock.y, targetBlock.z);
-            if (selectionOutline.getParent() == null) {
-                rootNode.attachChild(selectionOutline);
-            }
-        } else {
-            selectionOutline.removeFromParent();
-        }
+        currentResult = raycast();
     }
 
-    private void calculateVoxelRaycast() {
-        Vector3f currentPos = cam.getLocation().clone();
-        Vector3f direction = cam.getDirection().normalize().mult(STEP_SIZE);
-        Vector3f previousPos = currentPos.clone();
+    private RaycastResult raycast() {
+        Vector3f pos = cam.getLocation();
+        Vector3f dir = cam.getDirection();
 
-        targetBlock = null;
-        buildBlock = null;
+        // Current voxel coordinates
+        int x = (int) Math.floor(pos.x);
+        int y = (int) Math.floor(pos.y);
+        int z = (int) Math.floor(pos.z);
 
-        // Step forward incrementally through the 3D grid
-        int maxSteps = (int) (REACH / STEP_SIZE);
-        for (int i = 0; i < maxSteps; i++) {
-            currentPos.addLocal(direction);
+        // Step direction
+        int stepX = (dir.x > 0) ? 1 : -1;
+        int stepY = (dir.y > 0) ? 1 : -1;
+        int stepZ = (dir.z > 0) ? 1 : -1;
 
-            // Convert exact float to Block Integer coordinate
-            int bx = Math.round(currentPos.x);
-            int by = Math.round(currentPos.y);
-            int bz = Math.round(currentPos.z);
+        // Distance to next voxel boundary
+        float tMaxX = (float) (stepX > 0 ? (Math.floor(pos.x) + 1 - pos.x) : (pos.x - Math.floor(pos.x))) / Math.abs(dir.x);
+        float tMaxY = (float) (stepY > 0 ? (Math.floor(pos.y) + 1 - pos.y) : (pos.y - Math.floor(pos.y))) / Math.abs(dir.y);
+        float tMaxZ = (float) (stepZ > 0 ? (Math.floor(pos.z) + 1 - pos.z) : (pos.z - Math.floor(pos.z))) / Math.abs(dir.z);
 
-            byte blockId = worldManager.getBlockGlobal(bx, by, bz);
+        // How far t increases for one full voxel step
+        float tDeltaX = Math.abs(1f / dir.x);
+        float tDeltaY = Math.abs(1f / dir.y);
+        float tDeltaZ = Math.abs(1f / dir.z);
 
-            // Ignore Air (0) and Water (5)
-            if (blockId != 0 && blockId != 5) {
-                targetBlock = new Vector3f(bx, by, bz);
-                buildBlock = new Vector3f(Math.round(previousPos.x), Math.round(previousPos.y), Math.round(previousPos.z));
-                return; // Stop stepping, we hit a wall
+        Vector3f lastPos = new Vector3f(x, y, z);
+        float dist = 0;
+
+        while (dist < reach) {
+            if (tMaxX < tMaxY) {
+                if (tMaxX < tMaxZ) {
+                    dist = tMaxX;
+                    tMaxX += tDeltaX;
+                    x += stepX;
+                } else {
+                    dist = tMaxZ;
+                    tMaxZ += tDeltaZ;
+                    z += stepZ;
+                }
+            } else {
+                if (tMaxY < tMaxZ) {
+                    dist = tMaxY;
+                    tMaxY += tDeltaY;
+                    y += stepY;
+                } else {
+                    dist = tMaxZ;
+                    tMaxZ += tDeltaZ;
+                    z += stepZ;
+                }
             }
 
-            previousPos.set(currentPos);
-        }
-    }
-
-    public void deleteBlock() {
-        if (targetBlock != null) {
-            worldManager.setBlockGlobal((int) targetBlock.x, (int) targetBlock.y, (int) targetBlock.z, (byte) 0);
-        }
-    }
-
-    public void placeBlock(byte blockId) {
-        if (buildBlock != null) {
-            // Prevent placing blocks inside the player's own body
-            int px = Math.round(cam.getLocation().x);
-            int py = Math.round(cam.getLocation().y - 1.6f); // Player feet
-            int pz = Math.round(cam.getLocation().z);
-
-            boolean isInsidePlayer = (buildBlock.x == px && buildBlock.z == pz)
-                    && (buildBlock.y == py || buildBlock.y == py + 1);
-
-            if (!isInsidePlayer) {
-                worldManager.setBlockGlobal((int) buildBlock.x, (int) buildBlock.y, (int) buildBlock.z, blockId);
+            byte block = world.getBlockGlobal(x, y, z);
+            if (block != 0 && block != 5) { // Stop if we hit a solid block (not air/water)
+                return new RaycastResult(new Vector3f(x, y, z), lastPos);
             }
+            lastPos.set(x, y, z);
         }
+        return null;
+    }
+}
+
+// Simple data class to hold the hit block and the empty space before it
+class RaycastResult {
+
+    public Vector3f blockPos;  // The block you are looking at
+    public Vector3f adjacent;  // The empty space next to it (for placing blocks)
+
+    public RaycastResult(Vector3f blockPos, Vector3f adjacent) {
+        this.blockPos = blockPos;
+        this.adjacent = adjacent;
     }
 }

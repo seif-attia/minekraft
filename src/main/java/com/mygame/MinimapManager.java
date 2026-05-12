@@ -28,7 +28,7 @@ public class MinimapManager {
         this.renderManager = renderManager;
 
         //  Set the screen region (Top Right Corner)
-        minimapCam.setViewPort(0.78f, 0.98f, 0.78f, 0.98f);
+        minimapCam.setViewPort(0.79f, 0.98f, 0.71f, 0.98f);
 
         // Make it flat/orthographic
         minimapCam.setParallelProjection(true);
@@ -46,7 +46,7 @@ public class MinimapManager {
         //Tells it to only draw the blocks 
         minimapView.attachScene(worldNode);
     }
-    
+
     public void cleanup() {
         if (minimapView != null) {
             minimapView.clearScenes();
@@ -59,6 +59,6 @@ public class MinimapManager {
      * Gets called every frame to keep the minimap centered over the player.
      */
     public void update(Vector3f playerLocation) {
-        minimapCam.setLocation(new Vector3f(playerLocation.x, 150f, playerLocation.z));
+        minimapCam.setLocation(new Vector3f(playerLocation.x, 350f, playerLocation.z));
     }
 }

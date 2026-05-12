@@ -6,6 +6,7 @@ build/
 dist/
 nbbuild/
 nbdist/
+saves/
 .nb-gradle/
 
 # =========================

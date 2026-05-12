@@ -3,7 +3,7 @@ plugins {
     id 'application'
 }
 
-group = 'com.mygame'
+group = 'com.minekraft.engine'
 version = '1.0'
 
 import javax.net.ssl.*
@@ -24,7 +24,7 @@ HttpsURLConnection.setDefaultHostnameVerifier({ map, session -> true } as Hostna
 
 application {
     applicationName = 'MineKraft'
-    mainClass = 'com.mygame.Main'
+    mainClass = 'com.minekraft.engine.Main'
     // Mac OS with LWJGL 3 needs to be started with this JVM argument
     if (System.getProperty("os.name").toLowerCase().contains("mac")) {
         applicationDefaultJvmArgs = ['-XstartOnFirstThread']
@@ -86,7 +86,6 @@ dependencies {
   // Additional Libraries
   implementation 'org.jmonkeyengine:jme3-effects:3.6.1-stable'
   
-    implementation 'com.github.stephengold:Minie:7.7.0'
 
   // Assets sub-project
   runtimeOnly project(':assets')

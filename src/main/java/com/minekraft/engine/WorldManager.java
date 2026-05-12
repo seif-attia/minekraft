@@ -1,4 +1,4 @@
-package com.mygame;
+package com.minekraft.engine;
 
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;

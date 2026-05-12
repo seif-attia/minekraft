@@ -1,8 +1,11 @@
-package com.mygame;
+package com.minekraft.engine;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.renderer.RenderManager;
 import com.jme3.system.AppSettings;
+import java.awt.DisplayMode;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.io.File;
 import java.io.IOException;
 
@@ -26,8 +29,16 @@ public class Main extends SimpleApplication {
         } catch (IOException e) {
             System.err.println("Could not load window icon: " + e.getMessage());
         }
+
+        GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice device = env.getDefaultScreenDevice();
+
+        DisplayMode displayMode = device.getDisplayMode();
+        int width = displayMode.getWidth();
+        int height = displayMode.getHeight();
+
         //settings.setResolution(1280, 768);
-        settings.setResolution(1920, 1080);
+        settings.setResolution(width, height);
         settings.setFullscreen(true);
         settings.setVSync(false);
         settings.setFrameRate(-1);

@@ -1,4 +1,4 @@
-package com.mygame;
+package com.minekraft.engine;
 
 import com.jme3.math.Vector3f;
 

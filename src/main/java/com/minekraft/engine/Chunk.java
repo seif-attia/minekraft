@@ -1,4 +1,4 @@
-package com.mygame;
+package com.minekraft.engine;
 
 /**
  * @author EyonMiner

@@ -1,4 +1,4 @@
-package com.mygame;
+package com.minekraft.engine;
 
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
@@ -7,8 +7,8 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.debug.WireBox;
 import com.jme3.math.Vector3f;
-import com.mygame.RaycastManager;
-import com.mygame.RaycastResult;
+import com.minekraft.engine.RaycastManager;
+import com.minekraft.engine.RaycastResult;
 
 public class SelectionManager {
 

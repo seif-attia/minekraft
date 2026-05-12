@@ -1,4 +1,4 @@
-package com.mygame;
+package com.minekraft.engine;
 
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;

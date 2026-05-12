@@ -107,13 +107,15 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         raycastManager = new RaycastManager(cam, myWorld);
         selectionManager = new SelectionManager(rootNode, assetManager, raycastManager, player);
 
+        player.position.setY(300);
+
         // 2. Setup Inputs 
         initKeys();
 
         initCrosshair();
 
         hotbarManager = new HotbarManager(this.guiNode, assetManager, cam.getWidth());
-        
+
         if (Main.hideHud) {
             setHudVisible(false);
         }
@@ -318,11 +320,13 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
 
-        if (!isEnabled()) return;
-            
+        if (!isEnabled()) {
+            return;
+        }
+
         if (name.equals("PauseGame") && isPressed) {
-        getStateManager().attach(new PauseState());
-        return; 
+            getStateManager().attach(new PauseState());
+            return;
         }
 
         if (name.equals("ScrollUp")) {
@@ -464,7 +468,9 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
     @Override
     public void onAnalog(String name, float value, float tpf) {
         if (name.equals("MouseRight")) {
-            if (!isEnabled()) return;
+            if (!isEnabled()) {
+                return;
+            }
             player.rotate(-value, 0);
         } else if (name.equals("MouseLeft")) {
             player.rotate(value, 0);
@@ -519,26 +525,26 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         app.setDisplayFps(false);
         app.setDisplayStatView(false);
     }
-    
+
     public void setMinimapEnabled(boolean enabled) {
-    if (!enabled && minimap != null) {
-        minimap.cleanup();
-        minimap = null;
+        if (!enabled && minimap != null) {
+            minimap.cleanup();
+            minimap = null;
         } else if (enabled && minimap == null) {
-        minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
+            minimap = new MinimapManager(renderManager, cam, myWorld.getWorldNode());
         }
     }
-    
+
     public void setHudVisible(boolean visible) {
-    if (crosshair != null) {
-        crosshair.setCullHint(visible 
-            ? com.jme3.scene.Spatial.CullHint.Inherit 
-            : com.jme3.scene.Spatial.CullHint.Always);
+        if (crosshair != null) {
+            crosshair.setCullHint(visible
+                    ? com.jme3.scene.Spatial.CullHint.Inherit
+                    : com.jme3.scene.Spatial.CullHint.Always);
+        }
+        if (hotbarManager != null) {
+            hotbarManager.setVisible(visible);
+        }
     }
-    if (hotbarManager != null) {
-        hotbarManager.setVisible(visible);
-    }
-}
 
     private void initCrosshair() {
         // Load the default font from the asset manager
@@ -576,11 +582,9 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
         inputManager.addMapping("ToggleGhost", new KeyTrigger(KeyInput.KEY_C));
 
-    
         inputManager.addMapping("PauseGame", new KeyTrigger(KeyInput.KEY_ESCAPE));
         inputManager.addMapping("Delete", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
         inputManager.addMapping("Place", new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
-
 
         inputManager.addMapping("MouseLeft", new MouseAxisTrigger(MouseInput.AXIS_X, true));
         inputManager.addMapping("MouseRight", new MouseAxisTrigger(MouseInput.AXIS_X, false));
@@ -590,9 +594,8 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         inputManager.addMapping("SpeedUp", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, false));
         inputManager.addMapping("SpeedDown", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, true));
 
-
         inputManager.addListener(this, "Place", "Delete", "Forward", "Back", "Left", "Right", "Jump", "ToggleGhost", "PauseGame");
-      
+
         inputManager.addListener(this, "MouseLeft", "MouseRight", "MouseUp", "MouseDown", "SpeedUp", "SpeedDown");
         // scrolling for hotbar
         inputManager.addMapping("ScrollUp", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, false));

@@ -45,4 +45,29 @@ public class Player {
         pitch += pitchValue * mouseSensitivity;
         pitch = Math.max(-1.5f, Math.min(1.5f, pitch));
     }
+
+    public boolean intersectsVoxel(int bx, int by, int bz) {
+        // Calculate Player Bounding Box
+        // (Assuming position is at the exact bottom center of the feet)
+        float pMinX = position.x - (width / 2.0f);
+        float pMaxX = position.x + (width / 2.0f);
+        float pMinY = position.y;
+        float pMaxY = position.y + height;
+        float pMinZ = position.z - (width / 2.0f);
+        float pMaxZ = position.z + (width / 2.0f);
+
+        // Calculate Block Bounding Box (A voxel is exactly 1x1x1)
+        float bMinX = bx;
+        float bMaxX = bx + 1.0f;
+        float bMinY = by;
+        float bMaxY = by + 1.0f;
+        float bMinZ = bz;
+        float bMaxZ = bz + 1.0f;
+
+        // Standard 3D AABB Collision Check
+        // If ALL of these are true, the boxes are overlapping
+        return (pMinX < bMaxX && pMaxX > bMinX)
+                && (pMinY < bMaxY && pMaxY > bMinY)
+                && (pMinZ < bMaxZ && pMaxZ > bMinZ);
+    }
 }

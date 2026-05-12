@@ -314,19 +314,26 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
             player.toggleGhostMode();
             System.out.println("Ghost Mode: " + (player.isGhostMode ? "ON" : "OFF"));
         } // Raycasting Actions
-        else if (name.equals("Shoot") && isPressed) {
+        else if (name.equals("Delete") && isPressed) {
             if (!player.isGhostMode) {
                 RaycastResult res = raycastManager.currentResult;
                 if (res != null) {
                     myWorld.setBlockGlobal((int) res.blockPos.x, (int) res.blockPos.y, (int) res.blockPos.z, (byte) 0);
                 }
             }
-        } else if (name.equals("Delete") && isPressed) {
+        } else if (name.equals("Place") && isPressed) {
             if (!player.isGhostMode) {
                 RaycastResult res = raycastManager.currentResult;
                 if (res != null) {
-                    // Use the 'adjacent' position to place the new block next to the one hit
-                    myWorld.setBlockGlobal((int) res.adjacent.x, (int) res.adjacent.y, (int) res.adjacent.z, (byte) 1);
+                    // Extract the target placement coordinates
+                    int targetX = (int) res.adjacent.x;
+                    int targetY = (int) res.adjacent.y;
+                    int targetZ = (int) res.adjacent.z;
+
+                    // THE FIX: Check if the space is physically clear of the player
+                    if (!player.intersectsVoxel(targetX, targetY, targetZ)) {
+                        myWorld.setBlockGlobal(targetX, targetY, targetZ, (byte) 1);
+                    }
                 }
             }
         }
@@ -405,8 +412,8 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         inputManager.addMapping("Right", new KeyTrigger(KeyInput.KEY_D));
         inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
         inputManager.addMapping("ToggleGhost", new KeyTrigger(KeyInput.KEY_C));
-        inputManager.addMapping("Shoot", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
-        inputManager.addMapping("Delete", new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
+        inputManager.addMapping("Delete", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        inputManager.addMapping("Place", new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
 
         inputManager.addMapping("MouseLeft", new MouseAxisTrigger(MouseInput.AXIS_X, true));
         inputManager.addMapping("MouseRight", new MouseAxisTrigger(MouseInput.AXIS_X, false));
@@ -416,7 +423,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         inputManager.addMapping("SpeedUp", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, false));
         inputManager.addMapping("SpeedDown", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, true));
 
-        inputManager.addListener(this, "Shoot", "Delete", "Forward", "Back", "Left", "Right", "Jump", "ToggleGhost");
+        inputManager.addListener(this, "Place", "Delete", "Forward", "Back", "Left", "Right", "Jump", "ToggleGhost");
         inputManager.addListener(this, "MouseLeft", "MouseRight", "MouseUp", "MouseDown", "SpeedUp", "SpeedDown");
     }
 }

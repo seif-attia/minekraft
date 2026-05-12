@@ -19,12 +19,20 @@ public class SettingsState extends BaseAppState {
     private Container settingsWindow;
     public boolean fpsflag = false;
     public boolean statsflag = false;
+    private BackgroundHelper background;
 
     @Override
     protected void initialize(Application app) {
         this.app = (SimpleApplication) app;
         float screenWidth = app.getContext().getSettings().getWidth();
         float screenHeight = app.getContext().getSettings().getHeight();
+        
+        background = new BackgroundHelper(
+        app.getAssetManager(),
+        "Textures/Background.jpeg",   
+        app.getContext().getSettings().getWidth(),
+        app.getContext().getSettings().getHeight()
+    );
 
         settingsWindow = new Container();
         Vector3f buttonSize = new Vector3f(500, 60, 0);
@@ -76,6 +84,7 @@ public class SettingsState extends BaseAppState {
 
     @Override
     protected void onEnable() {
+        background.attach(app.getGuiNode());
         this.app.getGuiNode().attachChild(settingsWindow);
         // Ensure the mouse is visible so you can click the checkboxes
         this.app.getFlyByCamera().setDragToRotate(true);
@@ -88,6 +97,7 @@ public class SettingsState extends BaseAppState {
         this.app.getFlyByCamera().setDragToRotate(false);
         this.app.getInputManager().setCursorVisible(false);
         GuiGlobals.getInstance().getFocusManagerState().setFocus(null);
+        background.detach();
     }
 
     @Override

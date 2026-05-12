@@ -16,6 +16,7 @@ public class WorldsState extends BaseAppState {
 
     private SimpleApplication app;
     private Container worldsWindow;
+    private BackgroundHelper background;
 
     @Override
     protected void initialize(Application app) {
@@ -25,6 +26,13 @@ public class WorldsState extends BaseAppState {
 
         worldsWindow = new Container();
         worldsWindow.setLayout(new SpringGridLayout(Axis.X, Axis.Y));
+        
+        background = new BackgroundHelper(
+        app.getAssetManager(),
+        "Textures/Background.jpeg",   
+        app.getContext().getSettings().getWidth(),
+        app.getContext().getSettings().getHeight()
+    );
 
         // 1. Button: Enter Game (The one that starts the actual game)
         Button enterGameBtn = worldsWindow.addChild(new Button("Create new world"));
@@ -53,6 +61,7 @@ public class WorldsState extends BaseAppState {
 
     @Override
     protected void onEnable() {
+        background.attach(app.getGuiNode());
         this.app.getGuiNode().attachChild(worldsWindow);
         this.app.getFlyByCamera().setDragToRotate(true);
         this.app.getInputManager().setCursorVisible(true);
@@ -64,6 +73,7 @@ public class WorldsState extends BaseAppState {
         this.app.getFlyByCamera().setDragToRotate(false);
         this.app.getInputManager().setCursorVisible(false);
         GuiGlobals.getInstance().getFocusManagerState().setFocus(null);
+        background.detach();
     }
 
     @Override

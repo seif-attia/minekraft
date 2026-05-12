@@ -122,6 +122,7 @@ public class MenuState extends BaseAppState {
         myWindow.removeFromParent();
         this.app.getFlyByCamera().setDragToRotate(false);
         this.app.getInputManager().setCursorVisible(false);
+        GuiGlobals.getInstance().getFocusManagerState().setFocus(null);
     }
 
     @Override

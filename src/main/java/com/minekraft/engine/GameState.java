@@ -107,7 +107,7 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         raycastManager = new RaycastManager(cam, myWorld);
         selectionManager = new SelectionManager(rootNode, assetManager, raycastManager, player);
 
-        player.position.setY(300);
+        player.position.setY(350);
 
         // 2. Setup Inputs 
         initKeys();
@@ -268,6 +268,10 @@ public class GameState extends BaseAppState implements ActionListener, AnalogLis
         physicsEngine.update(tpf);
         raycastManager.update(tpf);
         selectionManager.update();
+
+        if (player.position.y < -200) {
+            player.position.setY(350);
+        }
 
         // --- 2. SYNC CAMERA TO PLAYER ---
         // Move the camera to the player's body position + 1.6f units up for eye level
